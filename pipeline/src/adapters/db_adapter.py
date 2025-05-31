@@ -38,7 +38,7 @@ class DatabaseAdapter:
                     try:
                         # 重複チェック
                         cur.execute(
-                            "SELECT 1 FROM \"Article\" WHERE title=%s AND url=%s AND source=%s",
+                            "SELECT 1 FROM \"Article\" WHERE title=%s AND \"articleUrl\"=%s AND source=%s",
                             (art.title, art.url, art.source)
                         )
                         if cur.fetchone():
@@ -48,17 +48,16 @@ class DatabaseAdapter:
                         # 記事を挿入
                         cur.execute(
                             """
-                            INSERT INTO "Article" (title, url, source, summary, labels, thumbnail_url, created_at, published, content)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            INSERT INTO "Article" (title, "articleUrl", source, summary, labels, "thumbnailUrl", "publishedAt", "fullText")
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                             """,
                             (
                                 art.title,
                                 art.url,
                                 art.source,
                                 art.summary,
-                                json.dumps(art.labels) if art.labels else "[]",
+                                art.labels if art.labels else [],
                                 art.thumbnail_url or "",
-                                art.published,
                                 art.published,
                                 art.content
                             )
@@ -75,10 +74,10 @@ class DatabaseAdapter:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, title, url, source, content, published
+                    SELECT id, title, "articleUrl" as url, source, "fullText" as content, "publishedAt" as published
                     FROM "Article" 
                     WHERE summary IS NULL OR summary = '' 
-                    ORDER BY published DESC 
+                    ORDER BY "publishedAt" DESC 
                     LIMIT %s
                     """,
                     (limit,)
@@ -91,7 +90,7 @@ class DatabaseAdapter:
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE \"Article\" SET summary=%s, labels=%s WHERE id=%s",
-                    (summary, json.dumps(labels), article_id)
+                    (summary, labels, article_id)
                 )
     
     def get_latest_articles(self, limit: int = 10) -> List[dict]:
@@ -100,9 +99,9 @@ class DatabaseAdapter:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, title, url, source, summary, labels, thumbnail_url, published, content
+                    SELECT id, title, "articleUrl" as url, source, summary, labels, "thumbnailUrl" as thumbnail_url, "publishedAt" as published, "fullText" as content
                     FROM "Article"
-                    ORDER BY published DESC NULLS LAST, created_at DESC
+                    ORDER BY "publishedAt" DESC NULLS LAST, "createdAt" DESC
                     LIMIT %s
                     """,
                     (limit,)
@@ -115,11 +114,11 @@ class DatabaseAdapter:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO topics (title, content, published_date, template, created_at)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO "Topic" (title, content, "publishDate")
+                    VALUES (%s, %s, %s)
                     RETURNING id
                     """,
-                    (topic.title, topic.content, topic.published_date, topic.template, datetime.now())
+                    (topic.title, topic.content, topic.published_date)
                 )
                 topic_id = cur.fetchone()["id"]
                 
@@ -127,10 +126,10 @@ class DatabaseAdapter:
                 for article_id in topic.article_ids:
                     cur.execute(
                         """
-                        INSERT INTO topics_articles (topic_id, article_id, created_at)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO "TopicsArticle" ("topicId", "articleId")
+                        VALUES (%s, %s)
                         """,
-                        (topic_id, article_id, datetime.now())
+                        (topic_id, article_id)
                     )
                 
                 return str(topic_id)
@@ -141,8 +140,8 @@ class DatabaseAdapter:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, title, content, published_date, template, created_at
-                    FROM topics
+                    SELECT id, title, content, "publishDate", "createdAt"
+                    FROM "Topic"
                     WHERE id = %s
                     """,
                     (topic_id,)
@@ -155,11 +154,11 @@ class DatabaseAdapter:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT a.id, a.title, a.url, a.source, a.summary, a.labels, a.thumbnail_url, a.published, a.content
-                    FROM topics_articles ta
-                    JOIN "Article" a ON ta.article_id = a.id
-                    WHERE ta.topic_id = %s
-                    ORDER BY a.published DESC NULLS LAST, a.created_at DESC
+                    SELECT a.id, a.title, a."articleUrl" as url, a.source, a.summary, a.labels, a."thumbnailUrl" as thumbnail_url, a."publishedAt" as published, a."fullText" as content
+                    FROM "TopicsArticle" ta
+                    JOIN "Article" a ON ta."articleId" = a.id
+                    WHERE ta."topicId" = %s
+                    ORDER BY a."publishedAt" DESC NULLS LAST, a."createdAt" DESC
                     """,
                     (topic_id,)
                 )

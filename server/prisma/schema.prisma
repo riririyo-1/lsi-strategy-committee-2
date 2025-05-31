@@ -10,29 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model TrendReport {
-  id          String   @id @default(uuid())
-  title       String
-  summary     String    @db.Text
-  content     String?   @db.Text
-  publishDate DateTime
-  videoUrl    String?
-  posterUrl   String?
-  pdfUrl      String?
-  speaker     String?
-  department  String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  agendaItems Agenda[]
-}
 
-model Agenda {
-  id            String      @id @default(uuid())
-  content       String
-  order         Int
-  trendReport   TrendReport @relation(fields: [trendReportId], references: [id], onDelete: Cascade)
-  trendReportId String
-}
 
 model Article {
   id           String   @id @default(uuid())
@@ -49,4 +27,83 @@ model Article {
   viewCount    Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  
+  // リレーション
+  topicsArticles    TopicsArticle[]
+  researchArticles  ResearchArticle[]
+}
+
+model Category {
+  id                String            @id @default(uuid())
+  name              String            @unique
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // リレーション
+  topicsArticles    TopicsArticle[]
+  researchArticles  ResearchArticle[]
+}
+
+model Topic {
+  id                String            @id @default(uuid())
+  title             String
+  summary           String?           @db.Text
+  publishDate       DateTime?
+  content           String?           @db.Text
+  viewCount         Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // リレーション
+  topicsArticles    TopicsArticle[]
+}
+
+model TopicsArticle {
+  id         String   @id @default(uuid())
+  topicId    String
+  articleId  String
+  categoryId String?
+  createdAt  DateTime @default(now())
+  
+  // リレーション
+  topic      Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  article    Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  category   Category? @relation(fields: [categoryId], references: [id])
+  
+  @@unique([topicId, articleId])
+}
+
+model Research {
+  id           String   @id @default(uuid())
+  title        String
+  summary      String   @db.Text
+  content      String?  @db.Text
+  publishDate  DateTime
+  videoUrl     String?
+  posterUrl    String?
+  pdfUrl       String?
+  speaker      String?
+  department   String?
+  agenda       String[]
+  viewCount    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // リレーション
+  researchArticles ResearchArticle[]
+}
+
+model ResearchArticle {
+  id         String   @id @default(uuid())
+  researchId String
+  articleId  String
+  categoryId String?
+  createdAt  DateTime @default(now())
+  
+  // リレーション
+  research   Research  @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  article    Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  category   Category? @relation(fields: [categoryId], references: [id])
+  
+  @@unique([researchId, articleId])
 }

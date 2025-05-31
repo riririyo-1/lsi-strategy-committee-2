@@ -812,6 +812,295 @@ app.post("/api/summarize", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/research:
+ *   get:
+ *     tags: [Research]
+ *     summary: 動向調査一覧取得
+ *     responses:
+ *       200:
+ *         description: 動向調査配列を返す
+ */
+app.get("/api/research", async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, title, summary, "publishDate", "videoUrl", "posterUrl", "pdfUrl", speaker, department, "viewCount", "createdAt", "updatedAt"
+      FROM "Research" 
+      ORDER BY "publishDate" DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching research:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/research:
+ *   post:
+ *     tags: [Research]
+ *     summary: 新規動向調査作成
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               summary:
+ *                 type: string
+ *               publishDate:
+ *                 type: string
+ *                 format: date
+ *               videoUrl:
+ *                 type: string
+ *               posterUrl:
+ *                 type: string
+ *               pdfUrl:
+ *                 type: string
+ *               speaker:
+ *                 type: string
+ *               department:
+ *                 type: string
+ *               agenda:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               content:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: 作成成功
+ */
+app.post(
+  "/api/research",
+  [
+    check("title").notEmpty().withMessage("Title is required"),
+    check("summary").notEmpty().withMessage("Summary is required"),
+    check("publishDate")
+      .isISO8601()
+      .withMessage("Valid publish date is required"),
+  ],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    try {
+      const {
+        title,
+        summary,
+        publishDate,
+        videoUrl,
+        posterUrl,
+        pdfUrl,
+        speaker,
+        department,
+        agenda,
+        content,
+      } = req.body;
+
+      const result = await pool.query(
+        `INSERT INTO "Research" (title, summary, "publishDate", "videoUrl", "posterUrl", "pdfUrl", speaker, department, agenda, content)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [
+          title,
+          summary,
+          publishDate,
+          videoUrl,
+          posterUrl,
+          pdfUrl,
+          speaker,
+          department,
+          agenda || [],
+          content,
+        ]
+      );
+
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating research:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/research/{id}:
+ *   get:
+ *     tags: [Research]
+ *     summary: 単一動向調査取得
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 動向調査オブジェクトを返す
+ *       404:
+ *         description: 存在しない
+ */
+app.get("/api/research/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM "Research" WHERE id = $1', [
+      id,
+    ]);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: "Research not found" });
+      return;
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching research:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/research/{id}:
+ *   put:
+ *     tags: [Research]
+ *     summary: 動向調査更新
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               summary:
+ *                 type: string
+ *               publishDate:
+ *                 type: string
+ *                 format: date
+ *               videoUrl:
+ *                 type: string
+ *               posterUrl:
+ *                 type: string
+ *               pdfUrl:
+ *                 type: string
+ *               speaker:
+ *                 type: string
+ *               department:
+ *                 type: string
+ *               agenda:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               content:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 更新成功
+ *       404:
+ *         description: 存在しない
+ */
+app.put("/api/research/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      summary,
+      publishDate,
+      videoUrl,
+      posterUrl,
+      pdfUrl,
+      speaker,
+      department,
+      agenda,
+      content,
+    } = req.body;
+
+    const result = await pool.query(
+      `UPDATE "Research" SET 
+       title = $1, summary = $2, "publishDate" = $3, "videoUrl" = $4, "posterUrl" = $5, 
+       "pdfUrl" = $6, speaker = $7, department = $8, agenda = $9, content = $10, "updatedAt" = NOW()
+       WHERE id = $11 RETURNING *`,
+      [
+        title,
+        summary,
+        publishDate,
+        videoUrl,
+        posterUrl,
+        pdfUrl,
+        speaker,
+        department,
+        agenda,
+        content,
+        id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: "Research not found" });
+      return;
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating research:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/research/{id}:
+ *   delete:
+ *     tags: [Research]
+ *     summary: 動向調査削除
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: 削除成功
+ *       404:
+ *         description: 存在しない
+ */
+app.delete("/api/research/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM "Research" WHERE id = $1', [
+      id,
+    ]);
+
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: "Research not found" });
+      return;
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting research:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ─── Server Start ───────────────────────────
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
