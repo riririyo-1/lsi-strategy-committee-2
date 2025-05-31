@@ -1,0 +1,14 @@
+fastapi==0.110.2
+uvicorn[standard]==0.29.0
+httpx==0.27.0
+feedparser==6.0.11
+psycopg[binary]==3.1.18
+python-dotenv==1.0.1
+pytest
+openai==1.3.0
+bs4
+python-dateutil
+jinja2
+PyYAML==6.0.1
+pydantic==2.5.0
+tenacity==8.2.3

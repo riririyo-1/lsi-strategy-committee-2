@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: semicon_topics
+      POSTGRES_USER: semicon_topics
+      POSTGRES_PASSWORD: semiconpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3100:3000"
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "4100:4000" # Server
+      - "5555:5555" # Prisma Studio
+    environment:
+      DATABASE_URL: "postgresql://semicon_topics:semiconpass@db:5432/semicon_topics"
+      NODE_ENV: production
+    depends_on:
+      - db
+    volumes:
+      - ./server/prisma:/app/prisma
+
+  pipeline:
+    build:
+      context: ./pipeline
+      dockerfile: Dockerfile
+    ports:
+      - "8100:8000"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: semicon_topics
+      POSTGRES_USER: semicon_topics
+      POSTGRES_PASSWORD: semiconpass
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LLM_ADAPTER: ${LLM_ADAPTER:-openai}
+      PIPELINE_ENV: ${PIPELINE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RSS_FETCH_TIMEOUT: ${RSS_FETCH_TIMEOUT:-10}
+      RSS_MAX_ARTICLES_PER_FEED: ${RSS_MAX_ARTICLES_PER_FEED:-50}
+      SUMMARY_MAX_LENGTH: ${SUMMARY_MAX_LENGTH:-500}
+      CATEGORY_CONFIDENCE_THRESHOLD: ${CATEGORY_CONFIDENCE_THRESHOLD:-0.7}
+    depends_on:
+      - db
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:

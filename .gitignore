@@ -1,0 +1,29 @@
+# node_modules
+node_modules/
+**/node_modules/
+
+# ビルド成果物
+dist/
+build/
+.next/
+out/
+
+# ログ
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# 環境変数ファイル
+.env
+**/.env
+
+# Python キャッシュ／仮想環境
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Prisma マイグレーションなど
+prisma/migrations/
+prisma/.env

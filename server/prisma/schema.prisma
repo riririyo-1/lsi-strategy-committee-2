@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model TrendReport {
+  id          String   @id @default(uuid())
+  title       String
+  summary     String    @db.Text
+  content     String?   @db.Text
+  publishDate DateTime
+  videoUrl    String?
+  posterUrl   String?
+  pdfUrl      String?
+  speaker     String?
+  department  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  agendaItems Agenda[]
+}
+
+model Agenda {
+  id            String      @id @default(uuid())
+  content       String
+  order         Int
+  trendReport   TrendReport @relation(fields: [trendReportId], references: [id], onDelete: Cascade)
+  trendReportId String
+}
+
+model Article {
+  id           String   @id @default(uuid())
+  title        String
+  source       String
+  publishedAt  DateTime
+  summary      String
+  labels       String[]
+  thumbnailUrl String?
+  articleUrl   String   @unique
+  fullText     String?
+  category     String?
+  subCategory  String?
+  viewCount    Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
