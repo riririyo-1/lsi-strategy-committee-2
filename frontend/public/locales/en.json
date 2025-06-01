@@ -1,0 +1,220 @@
+{
+  "common": {
+    "siteTitle": "LSI Strategy Committee",
+    "siteDescription": "Latest LSI technology trends, analysis, and TOPICS delivery",
+    "delimiter": ", ",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "save": "Save",
+    "search": "Search",
+    "back": "Back",
+    "details": "Details",
+    "download": "Download",
+    "processing": "Processing...",
+    "notSet": "Not set"
+  },
+  "nav": {
+    "home": "Home",
+    "research": "Trend Research",
+    "topics": "TOPICS",
+    "analysis": "Analysis",
+    "contact": "Contact",
+    "admin": "Admin",
+    "articles": "Articles"
+  },
+  "languageSwitcher": {
+    "language": "Language",
+    "ja": "Japanese",
+    "en": "English"
+  },
+  "footer": {
+    "copyright": "© 2025 LSI Strategy Committee. All rights reserved.",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "contact": "Contact",
+    "admin": "Admin",
+    "articles": "Articles"
+  },
+  "home": {
+    "welcome": {
+      "title": "Welcome to LSI Strategy Committee",
+      "description": "We provide the latest LSI technology trends, analysis, and TOPICS delivery.",
+      "button": "View Activities"
+    }
+  },
+  "research": {
+    "title": "Trend Research",
+    "description": "We research and analyze the latest semiconductor technology trends",
+    "publishDate": "Publish Date: {date}",
+    "filter": "Filter",
+    "sort": "Sort",
+    "category": "Category",
+    "search": "Search",
+    "speakerLabel": "Speaker",
+    "departmentLabel": "Department",
+    "materials": "Materials",
+    "agenda": "Agenda"
+  },
+  "topics": {
+    "title": "TOPICS",
+    "description": "We deliver the latest topics on LSI technology",
+    "publishDate": "Publish Date: {date}",
+    "filter": "Filter",
+    "sort": "Sort",
+    "category": "Category",
+    "search": "Search",
+    "articleCount": "Articles: {count}",
+    "categoryLabel": "Category:",
+    "articleUnit": " articles",
+    "thisMonthArticles": "This Month's Articles"
+  },
+  "articles": {
+    "title": "Articles",
+    "description": "Latest articles in the semiconductor industry",
+    "publishDate": "Publish Date: {date}",
+    "filter": "Filter",
+    "sort": "Sort",
+    "source": "Source",
+    "search": "Search",
+    "tableView": "View: Table",
+    "cardView": "View: Card",
+    "viewArticle": "View Article",
+    "originalArticle": "View Original",
+    "tableColumns": {
+      "title": "Title",
+      "source": "Source",
+      "date": "Date",
+      "summary": "Summary",
+      "labels": "Labels",
+      "actions": "Actions"
+    },
+    "detail": {
+      "title": "Article Details",
+      "source": "Source",
+      "publishDate": "Publish Date",
+      "summary": "Summary",
+      "labels": "Labels",
+      "content": "Content",
+      "relatedArticles": "Related Articles",
+      "backToList": "Back to List"
+    },
+    "collect": {
+      "title": "Article Collection",
+      "rssCollection": "RSS Collection",
+      "manualAdd": "Manual Add",
+      "dateRange": "Date Range",
+      "from": "From",
+      "to": "To",
+      "sourceSelection": "Source Selection",
+      "collectButton": "Collect",
+      "addButton": "Add",
+      "summarizeButton": "Summarize & Label",
+      "enterTitle": "Enter Title",
+      "enterUrl": "Enter URL",
+      "enterDate": "Enter Publish Date",
+      "enterSource": "Enter Source",
+      "collectionResult": "Collection Result",
+      "autoCollection": "Auto collection coming soon"
+    },
+    "noResults": "No articles match your criteria"
+  },
+  "contact": {
+    "heading": "Contact Us & Access Request",
+    "description": "If you have any questions, request for materials, or access requests, please contact us using the form below.",
+    "title": "Contact Form",
+    "name": "Name",
+    "email": "Email Address",
+    "company": "Company",
+    "type": "Inquiry Type",
+    "content": "Content / Request Reason",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "types": {
+      "inquiry": "General Inquiry",
+      "accessRequest": "Access Request",
+      "other": "Other"
+    },
+    "success": {
+      "title": "Submission Complete",
+      "message": "Your inquiry has been received. We will get back to you shortly.",
+      "newInquiry": "Create a new inquiry"
+    },
+    "error": {
+      "title": "Error",
+      "message": "Failed to submit. Please try again later."
+    },
+    "validation": {
+      "required": "{field} is required",
+      "email": "Please enter a valid email address",
+      "minLength": "{field} must be at least {min} characters long"
+    }
+  },
+  "articlesCollect": {
+    "title": "Article Collection Management",
+    "description": "Collect and manually add articles from RSS feeds.",
+    "rssFeedTab": "RSS Feed Collection",
+    "manualAddTab": "Manual Addition",
+    "rssFeedTitle": "RSS Feed Collection",
+    "manualAddTitle": "Manual Article Addition"
+  },
+  "adminDashboard": {
+    "title": "Admin Dashboard",
+    "swagger": "API Documentation (Swagger)",
+    "researchTitle": "Research Report Management",
+    "researchDesc": "Create, edit, delete, and publish research reports",
+    "topicsTitle": "TOPICS Management",
+    "topicsDesc": "RSS auto-collection, manual addition, summarization, labeling, list management, TOPICS list, selection, template export, category selection, summary input, preview, and email delivery",
+    "articlesTitle": "Article Collection",
+    "articlesDesc": "Collect and manually add articles from RSS feeds"
+  },
+  "admin": {
+    "common": {
+      "backToAdmin": "Back to Admin"
+    },
+    "research": {
+      "management": "Research Report Management",
+      "total": "Total: {count} Reports",
+      "create": "Create New Report",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Confirm Delete?",
+      "searchPlaceholder": "Search by report title...",
+      "noResults": "No reports found",
+      "error": "Failed to fetch reports",
+      "publishDate": "Publish Date: {date}",
+      "speaker": "Speaker: {name}",
+      "saveError": "Failed to save report",
+      "notFound": "Report not found",
+      "loadError": "Failed to load report",
+      "title": "Title",
+      "speakerLabel": "Speaker",
+      "department": "Department",
+      "agenda": "Agenda (Enter each item)",
+      "addAgendaItem": "Add item",
+      "removeAgendaItem": "Remove",
+      "summary": "Summary",
+      "video": "Video file",
+      "thumbnail": "Thumbnail image",
+      "pdf": "PDF document",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "save": "Save"
+    },
+    "topics": {
+      "management": "TOPICS Management",
+      "total": "Total: {count} TOPICS",
+      "create": "Create New TOPIC",
+      "edit": "Edit",
+      "collectArticles": "Collect Articles",
+      "delete": "Delete",
+      "searchPlaceholder": "Search by TOPICS title...",
+      "noResults": "No TOPICS found",
+      "error": "An error occurred",
+      "publishDate": "Publish Date: {date}",
+      "articleCount": "Articles: {count}",
+      "confirmDelete": "Delete this TOPIC?",
+      "confirmDeleteMessage": "This action cannot be undone. Are you sure you want to delete?"
+    }
+  }
+}

@@ -16,6 +16,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3100:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:4100"
+      NEXT_PUBLIC_PIPELINE_URL: "http://localhost:8100"
+      API_URL_INTERNAL: "http://server:4000"
+      PIPELINE_URL_INTERNAL: "http://pipeline:8000"
     depends_on:
       - server
 

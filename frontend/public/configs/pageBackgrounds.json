@@ -1,0 +1,23 @@
+{
+  "home": {
+    "type": "video",
+    "src": "/videos/home.mp4",
+    "options": { "loop": true, "muted": true }
+  },
+  "research": {
+    "type": "image",
+    "src": "/images/research.png"
+  },
+  "topics": {
+    "type": "image",
+    "src": "/images/topics.png"
+  },
+  "analysis": {
+    "type": "image",
+    "src": "/images/analysis.png"
+  },
+  "default": {
+    "type": "color",
+    "value": "#18181b"
+  }
+}

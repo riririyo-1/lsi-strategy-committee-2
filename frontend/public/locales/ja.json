@@ -1,0 +1,223 @@
+{
+  "common": {
+    "siteTitle": "LSI戦略コミッティ",
+    "siteDescription": "最新のLSI技術動向、分析、TOPICS配信",
+    "delimiter": "、",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "save": "保存",
+    "search": "検索",
+    "back": "戻る",
+    "details": "詳細",
+    "download": "ダウンロード",
+    "processing": "処理中",
+    "notSet": "未設定"
+  },
+  "nav": {
+    "home": "ホーム",
+    "research": "動向調査",
+    "topics": "TOPICS配信",
+    "analysis": "分析",
+    "contact": "お問い合わせ",
+    "admin": "管理者用",
+    "articles": "記事"
+  },
+  "languageSwitcher": {
+    "language": "言語",
+    "ja": "日本語",
+    "en": "英語"
+  },
+  "footer": {
+    "copyright": "© 2025 LSI戦略コミッティ. All rights reserved.",
+    "privacyPolicy": "プライバシーポリシー",
+    "termsOfService": "利用規約",
+    "contact": "お問い合わせ",
+    "admin": "管理者用",
+    "articles": "記事"
+  },
+  "home": {
+    "welcome": {
+      "title": "LSI戦略コミッティへようこそ",
+      "description": "最新のLSI技術動向、分析、TOPICS配信を行っています。",
+      "button": "活動概要を見る"
+    }
+  },
+  "research": {
+    "title": "動向調査",
+    "description": "最新の半導体技術動向を調査・分析しています",
+    "publishDate": "公開日: {date}",
+    "filter": "フィルター",
+    "sort": "並び替え",
+    "category": "カテゴリー",
+    "search": "検索",
+    "speakerLabel": "講演者",
+    "departmentLabel": "部署",
+    "materials": "資料",
+    "agenda": "アジェンダ",
+    "details": "詳細",
+    "back": "戻る",
+    "download": "ダウンロード"
+  },
+  "topics": {
+    "title": "TOPICS配信",
+    "description": "最新のLSI技術に関するトピックスを配信しています",
+    "publishDate": "公開日: {date}",
+    "filter": "フィルター",
+    "sort": "並び替え",
+    "category": "カテゴリー",
+    "search": "検索",
+    "articleCount": "記事数: {count}件",
+    "categoryLabel": "カテゴリ:",
+    "articleUnit": "件",
+    "thisMonthArticles": "今月のTOPICS記事"
+  },
+  "articles": {
+    "title": "記事一覧",
+    "description": "半導体業界の最新記事を掲載しています",
+    "publishDate": "公開日: {date}",
+    "filter": "フィルター",
+    "sort": "並び替え",
+    "source": "出典",
+    "search": "検索",
+    "tableView": "表示形式：表",
+    "cardView": "表示形式：カード",
+    "viewArticle": "記事を見る",
+    "originalArticle": "元記事を見る",
+    "tableColumns": {
+      "title": "タイトル",
+      "source": "出典",
+      "date": "日付",
+      "summary": "要約",
+      "labels": "ラベル",
+      "actions": "アクション"
+    },
+    "detail": {
+      "title": "記事詳細",
+      "source": "出典",
+      "publishDate": "公開日",
+      "summary": "要約",
+      "labels": "ラベル",
+      "content": "本文",
+      "relatedArticles": "関連記事",
+      "backToList": "一覧に戻る"
+    },
+    "collect": {
+      "title": "記事収集",
+      "rssCollection": "RSS収集",
+      "manualAdd": "手動追加",
+      "dateRange": "日付範囲",
+      "from": "開始日",
+      "to": "終了日",
+      "sourceSelection": "ソース選択",
+      "collectButton": "収集する",
+      "addButton": "追加する",
+      "summarizeButton": "要約・ラベル付け",
+      "enterTitle": "タイトルを入力",
+      "enterUrl": "URLを入力",
+      "enterDate": "公開日を入力",
+      "enterSource": "出典を入力",
+      "collectionResult": "収集結果",
+      "autoCollection": "自動収集は近日実装予定"
+    },
+    "noResults": "条件に一致する記事がありません"
+  },
+  "contact": {
+    "heading": "お問い合わせ・アクセス権申請",
+    "description": "ご質問や資料請求、アクセス権申請などございましたら、以下のフォームからお問い合わせください。",
+    "title": "お問い合わせフォーム",
+    "name": "お名前",
+    "email": "メールアドレス",
+    "company": "ご所属（会社）",
+    "type": "お問い合わせ種別",
+    "content": "内容・申請理由",
+    "submit": "送信する",
+    "submitting": "送信中...",
+    "types": {
+      "inquiry": "一般のお問い合わせ",
+      "accessRequest": "アクセス権申請",
+      "other": "その他"
+    },
+    "success": {
+      "title": "送信完了",
+      "message": "お問い合わせを受け付けました。折り返しご連絡いたします。",
+      "newInquiry": "新しい問い合わせを作成"
+    },
+    "error": {
+      "title": "エラー",
+      "message": "送信に失敗しました。後でもう一度お試しください。"
+    },
+    "validation": {
+      "required": "{field}は必須です",
+      "email": "有効なメールアドレスを入力してください",
+      "minLength": "{field}は{min}文字以上入力してください"
+    }
+  },
+  "articlesCollect": {
+    "title": "記事収集管理",
+    "description": "RSSフィードからの記事収集と手動追加を管理します。",
+    "rssFeedTab": "RSSフィード収集",
+    "manualAddTab": "手動追加",
+    "rssFeedTitle": "RSSフィード収集",
+    "manualAddTitle": "記事の手動追加"
+  },
+  "adminDashboard": {
+    "title": "管理者ダッシュボード",
+    "swagger": "APIドキュメント（Swagger）",
+    "researchTitle": "動向調査レポート管理",
+    "researchDesc": "レポートの作成・編集・削除・公開設定",
+    "topicsTitle": "TOPICS配信管理",
+    "topicsDesc": "RSS自動収集・手動追加・要約・ラベル付け・一覧管理・TOPICS一覧・TOPICS選択・テンプレート出力・カテゴリ選択・サマリ入力・プレビュー出力・メール配信",
+    "articlesTitle": "記事収集",
+    "articlesDesc": "RSSフィードからの記事収集と手動追加を管理します"
+  },
+  "admin": {
+    "common": {
+      "backToAdmin": "管理者ページへ戻る"
+    },
+    "research": {
+      "management": "動向調査レポート 管理",
+      "total": "合計: {count}件のレポート",
+      "create": "新規レポート作成",
+      "edit": "編集",
+      "delete": "削除",
+      "confirmDelete": "本当に削除？",
+      "searchPlaceholder": "レポートタイトルで検索...",
+      "noResults": "レポートが見つかりません",
+      "error": "レポート一覧の取得に失敗しました",
+      "publishDate": "公開日: {date}",
+      "speaker": "講演者: {name}",
+      "saveError": "レポートの保存に失敗しました",
+      "notFound": "レポートが見つかりません",
+      "loadError": "レポート情報の取得に失敗しました",
+      "title": "タイトル",
+      "speakerLabel": "講演者",
+      "department": "講演者部署",
+      "agenda": "アジェンダ（各項目を改行で入力）",
+      "addAgendaItem": "項目を追加",
+      "removeAgendaItem": "削除",
+      "summary": "要約",
+      "video": "動画ファイル",
+      "thumbnail": "サムネイル画像",
+      "pdf": "資料PDF",
+      "cancel": "キャンセル",
+      "saving": "保存中...",
+      "save": "保存する"
+    },
+    "topics": {
+      "management": "TOPICS配信管理",
+      "total": "合計: {count}件のTOPICS",
+      "create": "新規TOPICS作成",
+      "edit": "編集",
+      "collectArticles": "記事収集",
+      "delete": "削除",
+      "searchPlaceholder": "TOPICSタイトルで検索...",
+      "noResults": "TOPICSが見つかりません",
+      "error": "エラーが発生しました",
+      "publishDate": "公開日: {date}",
+      "articleCount": "記事数: {count}件",
+      "confirmDelete": "TOPICSを削除しますか？",
+      "confirmDeleteMessage": "この操作は取り消せません。本当に削除しますか？"
+    }
+  }
+}

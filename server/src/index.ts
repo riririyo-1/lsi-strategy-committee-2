@@ -3,6 +3,7 @@ import cors from "cors";
 import { Pool } from "pg";
 import axios from "axios";
 import { check, validationResult } from "express-validator";
+import { PrismaClient } from "@prisma/client";
 
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
@@ -45,6 +46,9 @@ console.log(
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+// ─── Prisma Client ──────────────────────────
+const prisma = new PrismaClient();
 
 // TOPICS関連のインメモリストア（テスト/開発用バックアップ）
 // 注: 本番環境ではデータベースを使用
@@ -824,12 +828,26 @@ app.post("/api/summarize", async (req: Request, res: Response) => {
  */
 app.get("/api/research", async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(`
-      SELECT id, title, summary, "publishDate", "videoUrl", "posterUrl", "pdfUrl", speaker, department, "viewCount", "createdAt", "updatedAt"
-      FROM "Research" 
-      ORDER BY "publishDate" DESC
-    `);
-    res.json(result.rows);
+    const research = await prisma.research.findMany({
+      orderBy: {
+        publishDate: "desc",
+      },
+      select: {
+        id: true,
+        title: true,
+        summary: true,
+        publishDate: true,
+        videoUrl: true,
+        posterUrl: true,
+        pdfUrl: true,
+        speaker: true,
+        department: true,
+        viewCount: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    res.json(research);
   } catch (error) {
     console.error("Error fetching research:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -906,24 +924,22 @@ app.post(
         content,
       } = req.body;
 
-      const result = await pool.query(
-        `INSERT INTO "Research" (title, summary, "publishDate", "videoUrl", "posterUrl", "pdfUrl", speaker, department, agenda, content)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-        [
+      const research = await prisma.research.create({
+        data: {
           title,
           summary,
-          publishDate,
+          publishDate: new Date(publishDate),
           videoUrl,
           posterUrl,
           pdfUrl,
           speaker,
           department,
-          agenda || [],
+          agenda: agenda || [],
           content,
-        ]
-      );
+        },
+      });
 
-      res.status(201).json(result.rows[0]);
+      res.status(201).json(research);
     } catch (error) {
       console.error("Error creating research:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -952,16 +968,16 @@ app.post(
 app.get("/api/research/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT * FROM "Research" WHERE id = $1', [
-      id,
-    ]);
+    const research = await prisma.research.findUnique({
+      where: { id },
+    });
 
-    if (result.rows.length === 0) {
+    if (!research) {
       res.status(404).json({ error: "Research not found" });
       return;
     }
 
-    res.json(result.rows[0]);
+    res.json(research);
   } catch (error) {
     console.error("Error fetching research:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -1032,15 +1048,12 @@ app.put("/api/research/:id", async (req: Request, res: Response) => {
       content,
     } = req.body;
 
-    const result = await pool.query(
-      `UPDATE "Research" SET 
-       title = $1, summary = $2, "publishDate" = $3, "videoUrl" = $4, "posterUrl" = $5, 
-       "pdfUrl" = $6, speaker = $7, department = $8, agenda = $9, content = $10, "updatedAt" = NOW()
-       WHERE id = $11 RETURNING *`,
-      [
+    const research = await prisma.research.update({
+      where: { id },
+      data: {
         title,
         summary,
-        publishDate,
+        publishDate: publishDate ? new Date(publishDate) : undefined,
         videoUrl,
         posterUrl,
         pdfUrl,
@@ -1048,19 +1061,17 @@ app.put("/api/research/:id", async (req: Request, res: Response) => {
         department,
         agenda,
         content,
-        id,
-      ]
-    );
+      },
+    });
 
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: "Research not found" });
-      return;
-    }
-
-    res.json(result.rows[0]);
+    res.json(research);
   } catch (error) {
     console.error("Error updating research:", error);
-    res.status(500).json({ error: "Internal server error" });
+    if (error.code === "P2025") {
+      res.status(404).json({ error: "Research not found" });
+    } else {
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
 });
 
@@ -1085,19 +1096,19 @@ app.put("/api/research/:id", async (req: Request, res: Response) => {
 app.delete("/api/research/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM "Research" WHERE id = $1', [
-      id,
-    ]);
 
-    if (result.rowCount === 0) {
-      res.status(404).json({ error: "Research not found" });
-      return;
-    }
+    await prisma.research.delete({
+      where: { id },
+    });
 
     res.status(204).send();
   } catch (error) {
     console.error("Error deleting research:", error);
-    res.status(500).json({ error: "Internal server error" });
+    if (error.code === "P2025") {
+      res.status(404).json({ error: "Research not found" });
+    } else {
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
 });
 
