@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: semicon_topics
       POSTGRES_PASSWORD: semiconpass
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

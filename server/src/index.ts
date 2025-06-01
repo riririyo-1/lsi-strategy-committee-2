@@ -3,7 +3,7 @@ import cors from "cors";
 import { Pool } from "pg";
 import axios from "axios";
 import { check, validationResult } from "express-validator";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
@@ -1067,10 +1067,26 @@ app.put("/api/research/:id", async (req: Request, res: Response) => {
     res.json(research);
   } catch (error) {
     console.error("Error updating research:", error);
-    if (error.code === "P2025") {
-      res.status(404).json({ error: "Research not found" });
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // errorがPrismaClientKnownRequestErrorのインスタンスである場合
+      if (error.code === "P2025") {
+        res
+          .status(404)
+          .json({ error: "Research not found (Prisma Error P2025)" });
+      } else {
+        // その他のPrismaクライアントの既知のエラー
+        res
+          .status(500)
+          .json({ error: "A Prisma error occurred", code: error.code });
+      }
+    } else if (error instanceof Error) {
+      // Prisma以外の一般的なJavaScriptエラーの場合
+      res
+        .status(500)
+        .json({ error: "Internal server error", message: error.message });
     } else {
-      res.status(500).json({ error: "Internal server error" });
+      // それ以外の予期しないエラー
+      res.status(500).json({ error: "An unknown error occurred" });
     }
   }
 });
@@ -1103,11 +1119,27 @@ app.delete("/api/research/:id", async (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error("Error deleting research:", error);
-    if (error.code === "P2025") {
-      res.status(404).json({ error: "Research not found" });
+    console.error("Error deleting research:", error); // エラーオブジェクト全体はログに出力してOK
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // errorがPrismaClientKnownRequestErrorのインスタンスである場合
+      if (error.code === "P2025") {
+        res
+          .status(404)
+          .json({ error: "Research not found (Prisma Error P2025)" });
+      } else {
+        // その他のPrismaクライアントの既知のエラー
+        res
+          .status(500)
+          .json({ error: "A Prisma error occurred", code: error.code });
+      }
+    } else if (error instanceof Error) {
+      // Prisma以外の一般的なJavaScriptエラーの場合
+      res
+        .status(500)
+        .json({ error: "Internal server error", message: error.message });
     } else {
-      res.status(500).json({ error: "Internal server error" });
+      // それ以外の予期しないエラー
+      res.status(500).json({ error: "An unknown error occurred" });
     }
   }
 });
