@@ -50,10 +50,32 @@ export const researchApi = {
 export const articlesApi = {
   getAll: () => apiClient.get("/api/articles"),
   getById: (id: string) => apiClient.get(`/api/articles/${id}`),
+  create: (data: {
+    title: string;
+    articleUrl: string;
+    source: string;
+    publishedAt: string;
+  }) => apiClient.post("/api/articles", data),
   delete: (id: string) => apiClient.delete(`/api/articles/${id}`),
   deleteMultiple: (ids: string[]) =>
     apiClient.delete("/api/articles", { data: { ids } }),
   getLabels: () => apiClient.get("/api/articles/labels"),
+  collectRSS: (data: {
+    sources: string[];
+    startDate: string;
+    endDate: string;
+  }) => apiClient.post("/api/articles/rss-collect", data),
+  batchCreate: (data: {
+    articles: Array<{
+      title: string;
+      articleUrl: string;
+      source: string;
+      publishedAt: string;
+      summary?: string;
+      labels?: string[];
+      thumbnailUrl?: string;
+    }>;
+  }) => apiClient.post("/api/articles/batch_create", data),
 };
 
 // Topics API

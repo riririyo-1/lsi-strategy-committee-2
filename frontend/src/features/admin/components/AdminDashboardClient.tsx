@@ -20,7 +20,7 @@ const AdminDashboardClient = () => {
           {t("adminDashboard.swagger")}
         </a>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
         <Link
           href="/admin/research"
           className="block bg-green-800 hover:bg-green-700 text-white rounded-lg shadow p-8 transition h-full"
@@ -41,6 +41,17 @@ const AdminDashboardClient = () => {
           </div>
           <div className="text-gray-300 text-sm text-center">
             {t("adminDashboard.topicsDesc")}
+          </div>
+        </Link>
+        <Link
+          href="/admin/articles/collect"
+          className="block bg-yellow-700 hover:bg-yellow-600 text-white rounded-lg shadow p-8 transition h-full"
+        >
+          <div className="text-xl font-semibold mb-2 text-center">
+            {t("adminDashboard.articlesTitle")}
+          </div>
+          <div className="text-gray-300 text-sm text-center">
+            {t("adminDashboard.articlesDesc")}
           </div>
         </Link>
       </div>

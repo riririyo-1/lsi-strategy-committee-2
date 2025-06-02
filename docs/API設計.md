@@ -26,6 +26,56 @@ paths:
       responses:
         "200":
           description: 記事配列を返す
+    post:
+      tags: [Articles]
+      summary: 新規記事作成
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, articleUrl, source, publishedAt]
+              properties:
+                title:
+                  type: string
+                  description: 記事タイトル
+                articleUrl:
+                  type: string
+                  format: uri
+                  description: 記事URL
+                source:
+                  type: string
+                  description: 出典元
+                publishedAt:
+                  type: string
+                  format: date-time
+                  description: 公開日時
+                summary:
+                  type: string
+                  description: 要約（省略可）
+                labels:
+                  type: array
+                  items:
+                    type: string
+                  description: ラベル配列（省略可）
+                thumbnailUrl:
+                  type: string
+                  format: uri
+                  description: サムネイル画像URL（省略可）
+      responses:
+        "201":
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  message:
+                    type: string
+        "400":
+          description: リクエストエラー
     delete:
       tags: [Articles]
       summary: 複数記事を削除

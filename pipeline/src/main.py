@@ -2,6 +2,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
+from typing import List, Optional
+import asyncio
+import aiohttp
+import feedparser
+from datetime import datetime, timedelta
+import requests
 
 # ルーターのインポート
 from routers.crawl_router import router as crawl_router
@@ -143,6 +150,200 @@ async def api_status():
     }
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# RSS収集用のモデル
+class RSSCollectRequest(BaseModel):
+    sources: List[str]
+    startDate: str
+    endDate: str
+
+class ArticleData(BaseModel):
+    title: str
+    articleUrl: str
+    source: str
+    publishedAt: str
+    summary: Optional[str] = ""
+    labels: Optional[List[str]] = []
+    thumbnailUrl: Optional[str] = None
+
+@app.post("/collect-rss")
+async def collect_rss(request: RSSCollectRequest):
+    """RSS収集エンドポイント - Express API経由でDB保存"""
+    print(f"RSS収集開始: {request.sources}")
+    
+    # RSS URLマッピング（デモ用）
+    rss_urls = {
+        "ITmedia": "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",
+        "NHK": "https://www3.nhk.or.jp/rss/news/cat0.xml",
+        "EE Times Japan": "https://eetimes.itmedia.co.jp/ee/rss/news.xml",
+        "マイナビ": "https://news.mynavi.jp/rss"
+    }
+    
+    collected_articles = []
+    
+    # 各ソースから並列収集
+    tasks = []
+    for source in request.sources:
+        if source in rss_urls:
+            task = collect_from_source(
+                source, 
+                rss_urls[source], 
+                request.startDate, 
+                request.endDate
+            )
+            tasks.append(task)
+    
+    # 並列実行
+    try:
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for result in results:
+            if isinstance(result, list):
+                collected_articles.extend(result)
+            else:
+                print(f"収集エラー: {result}")
+        
+        print(f"RSS収集完了: {len(collected_articles)}件")
+        
+        # Express APIのバッチ作成エンドポイントに送信
+        if collected_articles:
+            try:
+                batch_response = requests.post(
+                    "http://server:4000/api/articles/batch_create",
+                    json={"articles": collected_articles},
+                    headers={"Content-Type": "application/json"},
+                    timeout=30
+                )
+                
+                if batch_response.status_code == 200:
+                    batch_result = batch_response.json()
+                    print(f"DB保存完了: inserted={batch_result['insertedCount']}, skipped={batch_result['skippedCount']}")
+                    return batch_result
+                else:
+                    print(f"DB保存エラー: {batch_response.status_code} {batch_response.text}")
+                    return {
+                        "success": False,
+                        "error": "データベース保存に失敗しました",
+                        "insertedCount": 0,
+                        "skippedCount": 0,
+                        "invalidCount": len(collected_articles),
+                        "invalidItems": collected_articles
+                    }
+            except Exception as e:
+                print(f"Express API呼び出しエラー: {e}")
+                return {
+                    "success": False,
+                    "error": "サーバー通信エラー",
+                    "insertedCount": 0,
+                    "skippedCount": 0,
+                    "invalidCount": len(collected_articles),
+                    "invalidItems": []
+                }
+        else:
+            return {
+                "success": True,
+                "insertedCount": 0,
+                "skippedCount": 0,
+                "invalidCount": 0,
+                "invalidItems": []
+            }
+            
+    except Exception as e:
+        print(f"RSS収集処理エラー: {e}")
+        raise HTTPException(status_code=500, detail=f"RSS収集処理に失敗しました: {str(e)}")
+
+async def collect_from_source(source_name: str, rss_url: str, start_date: str, end_date: str):
+    """単一ソースからの記事収集"""
+    try:
+        timeout = aiohttp.ClientTimeout(total=15)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(rss_url) as response:
+                if response.status != 200:
+                    print(f"{source_name}: HTTP {response.status}")
+                    return []
+                rss_content = await response.text()
+        
+        feed = feedparser.parse(rss_content)
+        if not feed.entries:
+            print(f"{source_name}: フィードが空です")
+            return []
+            
+        articles = []
+        
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            end_dt = datetime.fromisoformat(end_date) + timedelta(days=1)  # 終了日を含める
+        except ValueError:
+            print(f"日付形式エラー: {start_date}, {end_date}")
+            return []
+        
+        for entry in feed.entries:
+            try:
+                # 日付解析（複数形式に対応）
+                published_dt = None
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    published_dt = datetime(*entry.published_parsed[:6])
+                elif hasattr(entry, 'published'):
+                    try:
+                        published_dt = datetime.fromisoformat(entry.published.replace('Z', '+00:00'))
+                    except:
+                        # 他の日付形式も試行
+                        from dateutil import parser
+                        published_dt = parser.parse(entry.published)
+                
+                if not published_dt:
+                    continue
+                
+                # 日付フィルタリング
+                if start_dt <= published_dt <= end_dt:
+                    article = {
+                        "title": entry.title.strip() if hasattr(entry, 'title') else "タイトル不明",
+                        "articleUrl": entry.link if hasattr(entry, 'link') else "",
+                        "source": source_name,
+                        "publishedAt": published_dt.isoformat(),
+                        "summary": entry.get("summary", "")[:500],  # 500文字制限
+                        "thumbnailUrl": extract_thumbnail(entry)
+                    }
+                    
+                    # 必須フィールドチェック
+                    if article["title"] and article["articleUrl"]:
+                        articles.append(article)
+            
+            except Exception as entry_error:
+                print(f"{source_name}のエントリ処理エラー: {entry_error}")
+                continue
+        
+        print(f"{source_name}から{len(articles)}件収集")
+        return articles
+        
+    except Exception as e:
+        print(f"{source_name}の収集でエラー: {e}")
+        return []
+
+def extract_thumbnail(entry):
+    """エントリからサムネイル画像を抽出"""
+    try:
+        # media:content チェック
+        if hasattr(entry, 'media_content'):
+            for media in entry.media_content:
+                if media.get('type', '').startswith('image/'):
+                    return media.get('url')
+        
+        # enclosure チェック
+        if hasattr(entry, 'enclosures'):
+            for enclosure in entry.enclosures:
+                if enclosure.get('type', '').startswith('image/'):
+                    return enclosure.get('href')
+                    
+        # summary内の画像タグをチェック
+        if hasattr(entry, 'summary'):
+            import re
+            img_match = re.search(r'<img[^>]+src="([^"]+)"', entry.summary)
+            if img_match:
+                return img_match.group(1)
+                
+    except Exception:
+        pass
+    
+    return None
+
+# ...existing code...

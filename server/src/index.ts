@@ -1,6 +1,5 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import { Pool } from "pg";
 import axios from "axios";
 import { check, validationResult } from "express-validator";
 import { PrismaClient, Prisma } from "@prisma/client";
@@ -41,11 +40,6 @@ app.use(
 console.log(
   `[Swagger] API docs available at http://localhost:${port}/api-docs`
 );
-
-// ─── DB Pool ─────────────────────────────────
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
 
 // ─── Prisma Client ──────────────────────────
 const prisma = new PrismaClient();
@@ -96,17 +90,142 @@ app.get("/api/health", (req: Request, res: Response) => {
  */
 app.get("/api/articles", async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(`
-      SELECT id, title, url, published_at, summary, labels, created_at, updated_at 
-      FROM articles 
-      ORDER BY published_at DESC
-    `);
-    res.json(result.rows);
+    const articles = await prisma.article.findMany({
+      orderBy: {
+        publishedAt: "desc",
+      },
+    });
+    res.json(articles);
   } catch (error) {
     console.error("Error fetching articles:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+/**
+ * @swagger
+ * /api/articles:
+ *   post:
+ *     tags: [Articles]
+ *     summary: 新しい記事を追加
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - articleUrl
+ *               - source
+ *               - publishedAt
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: 記事タイトル
+ *               articleUrl:
+ *                 type: string
+ *                 description: 記事URL
+ *               source:
+ *                 type: string
+ *                 description: 出典元
+ *               publishedAt:
+ *                 type: string
+ *                 format: date
+ *                 description: 公開日 (YYYY-MM-DD形式)
+ *               summary:
+ *                 type: string
+ *                 description: 記事概要
+ *               labels:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: ラベル
+ *               thumbnailUrl:
+ *                 type: string
+ *                 description: サムネイル画像URL
+ *     responses:
+ *       201:
+ *         description: 記事作成成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: バリデーションエラー
+ *       409:
+ *         description: 記事URLが既に存在
+ */
+app.post(
+  "/api/articles",
+  [
+    check("title").notEmpty().withMessage("タイトルは必須です"),
+    check("articleUrl").isURL().withMessage("有効なURLを入力してください"),
+    check("source").notEmpty().withMessage("出典元は必須です"),
+    check("publishedAt").isDate().withMessage("有効な日付を入力してください"),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      // バリデーション結果確認
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          error: "Validation failed",
+          details: errors.array(),
+        });
+        return;
+      }
+
+      const {
+        title,
+        articleUrl,
+        source,
+        publishedAt,
+        summary = "",
+        labels = [],
+        thumbnailUrl = null,
+      } = req.body;
+
+      // Prismaを使用して記事を作成
+      const article = await prisma.article.create({
+        data: {
+          title,
+          articleUrl,
+          source,
+          publishedAt: new Date(publishedAt),
+          summary,
+          labels,
+          thumbnailUrl,
+        },
+      });
+
+      res.status(201).json({
+        id: article.id,
+        message: "記事が正常に追加されました",
+      });
+    } catch (error: any) {
+      console.error("Error creating article:", error);
+
+      // Unique制約違反の場合
+      if (
+        error.code === "P2002" &&
+        error.meta?.target?.includes("articleUrl")
+      ) {
+        res.status(409).json({
+          error: "この記事URLは既に登録されています",
+        });
+        return;
+      }
+
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
 
 /**
  * @swagger
@@ -129,16 +248,16 @@ app.get("/api/articles", async (req: Request, res: Response) => {
 app.get("/api/articles/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await pool.query("SELECT * FROM articles WHERE id = $1", [
-      id,
-    ]);
+    const article = await prisma.article.findUnique({
+      where: { id },
+    });
 
-    if (result.rows.length === 0) {
+    if (!article) {
       res.status(404).json({ error: "Article not found" });
       return;
     }
 
-    res.json(result.rows[0]);
+    res.json(article);
   } catch (error) {
     console.error("Error fetching article:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -164,16 +283,19 @@ app.get("/api/articles/:id", async (req: Request, res: Response) => {
 app.delete("/api/articles/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await pool.query("DELETE FROM articles WHERE id = $1", [id]);
+    const article = await prisma.article.delete({
+      where: { id },
+    });
 
-    if (result.rowCount === 0) {
+    res.status(204).send();
+  } catch (error: any) {
+    console.error("Error deleting article:", error);
+
+    if (error.code === "P2025") {
       res.status(404).json({ error: "Article not found" });
       return;
     }
 
-    res.status(204).send();
-  } catch (error) {
-    console.error("Error deleting article:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -207,9 +329,13 @@ app.delete("/api/articles", async (req: Request, res: Response) => {
       return;
     }
 
-    const result = await pool.query("DELETE FROM articles WHERE id = ANY($1)", [
-      ids,
-    ]);
+    await prisma.article.deleteMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+    });
 
     res.status(204).send();
   } catch (error) {
@@ -236,15 +362,22 @@ app.delete("/api/articles", async (req: Request, res: Response) => {
  */
 app.get("/api/articles/labels", async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(`
-      SELECT DISTINCT unnest(labels) as label 
-      FROM articles 
-      WHERE labels IS NOT NULL 
-      ORDER BY label
-    `);
+    const articles = await prisma.article.findMany({
+      select: {
+        labels: true,
+      },
+      where: {
+        labels: {
+          isEmpty: false,
+        },
+      },
+    });
 
-    const labels = result.rows.map((row) => row.label);
-    res.json(labels);
+    // すべてのラベルを抽出して重複を削除、ソート
+    const allLabels = articles.flatMap((article) => article.labels || []);
+    const uniqueLabels = [...new Set(allLabels)].sort();
+
+    res.json(uniqueLabels);
   } catch (error) {
     console.error("Error fetching labels:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -263,12 +396,12 @@ app.get("/api/articles/labels", async (req: Request, res: Response) => {
  */
 app.get("/api/categories", async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(`
-      SELECT id, name, created_at, updated_at 
-      FROM categories 
-      ORDER BY name
-    `);
-    res.json(result.rows);
+    const categories = await prisma.category.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
+    res.json(categories);
   } catch (error) {
     console.error("Error fetching categories:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -306,11 +439,10 @@ app.post(
 
     try {
       const { name } = req.body;
-      const result = await pool.query(
-        "INSERT INTO categories (name) VALUES ($1) RETURNING *",
-        [name]
-      );
-      res.status(201).json(result.rows[0]);
+      const category = await prisma.category.create({
+        data: { name },
+      });
+      res.status(201).json(category);
     } catch (error) {
       console.error("Error creating category:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -359,19 +491,20 @@ app.put(
       const { id } = req.params;
       const { name } = req.body;
 
-      const result = await pool.query(
-        "UPDATE categories SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
-        [name, id]
-      );
+      const category = await prisma.category.update({
+        where: { id },
+        data: { name },
+      });
 
-      if (result.rows.length === 0) {
+      res.json(category);
+    } catch (error: any) {
+      console.error("Error updating category:", error);
+
+      if (error.code === "P2025") {
         res.status(404).json({ error: "Category not found" });
         return;
       }
 
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error("Error updating category:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -398,18 +531,19 @@ app.put(
 app.delete("/api/categories/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await pool.query("DELETE FROM categories WHERE id = $1", [
-      id,
-    ]);
+    await prisma.category.delete({
+      where: { id },
+    });
 
-    if (result.rowCount === 0) {
+    res.status(204).send();
+  } catch (error: any) {
+    console.error("Error deleting category:", error);
+
+    if (error.code === "P2025") {
       res.status(404).json({ error: "Category not found" });
       return;
     }
 
-    res.status(204).send();
-  } catch (error) {
-    console.error("Error deleting category:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -426,12 +560,12 @@ app.delete("/api/categories/:id", async (req: Request, res: Response) => {
  */
 app.get("/api/topics", async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(`
-      SELECT id, title, created_at, updated_at 
-      FROM topics 
-      ORDER BY created_at DESC
-    `);
-    res.json(result.rows);
+    const topics = await prisma.topic.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+    res.json(topics);
   } catch (error) {
     console.error("Error fetching topics:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -1143,6 +1277,297 @@ app.delete("/api/research/:id", async (req: Request, res: Response) => {
     }
   }
 });
+
+/**
+ * @swagger
+ * /api/articles/batch_create:
+ *   post:
+ *     tags: [Articles]
+ *     summary: 記事一括作成
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               articles:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - title
+ *                     - articleUrl
+ *                     - source
+ *                     - publishedAt
+ *                   properties:
+ *                     title:
+ *                       type: string
+ *                     articleUrl:
+ *                       type: string
+ *                     source:
+ *                       type: string
+ *                     publishedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     summary:
+ *                       type: string
+ *                     labels:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     thumbnailUrl:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: 一括作成成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 insertedCount:
+ *                   type: number
+ *                 skippedCount:
+ *                   type: number
+ *                 invalidCount:
+ *                   type: number
+ *                 invalidItems:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
+app.post("/api/articles/batch_create", async (req: Request, res: Response) => {
+  try {
+    const { articles } = req.body;
+
+    if (!articles || !Array.isArray(articles)) {
+      res.status(400).json({ error: "articles array is required" });
+      return;
+    }
+
+    console.log(`バッチ作成開始: ${articles.length}件の記事を処理中`);
+
+    const validArticles = [];
+    const invalidItems = [];
+
+    // バリデーション処理
+    for (const [index, article] of articles.entries()) {
+      const validation = validateArticleData(article);
+      if (validation.isValid) {
+        validArticles.push({
+          title: article.title,
+          articleUrl: article.articleUrl,
+          source: article.source,
+          publishedAt: new Date(article.publishedAt),
+          summary: article.summary || "",
+          labels: article.labels || [],
+          thumbnailUrl: article.thumbnailUrl || null,
+        });
+      } else {
+        invalidItems.push({
+          index,
+          article: { title: article.title, url: article.articleUrl },
+          errors: validation.errors,
+        });
+      }
+    }
+
+    let insertedCount = 0;
+    let skippedCount = 0;
+
+    if (validArticles.length > 0) {
+      // 重複チェック用: 既存のarticleUrlを取得
+      const existingUrls = await prisma.article.findMany({
+        select: { articleUrl: true },
+        where: {
+          articleUrl: {
+            in: validArticles.map((a) => a.articleUrl),
+          },
+        },
+      });
+
+      const existingUrlSet = new Set(existingUrls.map((a) => a.articleUrl));
+
+      // 新規記事のみをフィルタリング
+      const newArticles = validArticles.filter(
+        (article) => !existingUrlSet.has(article.articleUrl)
+      );
+
+      skippedCount = validArticles.length - newArticles.length;
+
+      if (newArticles.length > 0) {
+        // 一括作成実行
+        const result = await prisma.article.createMany({
+          data: newArticles,
+          skipDuplicates: true, // 念のため
+        });
+        insertedCount = result.count;
+      }
+    }
+
+    console.log(
+      `バッチ作成完了: 新規=${insertedCount}件, 重複=${skippedCount}件, 無効=${invalidItems.length}件`
+    );
+
+    res.json({
+      success: true,
+      insertedCount,
+      skippedCount,
+      invalidCount: invalidItems.length,
+      invalidItems,
+    });
+  } catch (error) {
+    console.error("Error in batch create:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/articles/rss-collect:
+ *   post:
+ *     tags: [Articles]
+ *     summary: RSS収集実行
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               sources:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: RSS収集成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 insertedCount:
+ *                   type: number
+ *                 skippedCount:
+ *                   type: number
+ *                 invalidCount:
+ *                   type: number
+ *                 invalidItems:
+ *                   type: array
+ */
+app.post("/api/articles/rss-collect", async (req: Request, res: Response) => {
+  try {
+    const { sources, startDate, endDate } = req.body;
+
+    if (!sources || !Array.isArray(sources) || sources.length === 0) {
+      res.status(400).json({ error: "sources array is required" });
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      res.status(400).json({ error: "startDate and endDate are required" });
+      return;
+    }
+
+    console.log(
+      `RSS収集開始: sources=${sources}, period=${startDate}〜${endDate}`
+    );
+
+    // PipelineのRSS収集エンドポイントを呼び出し
+    const pipelineResponse = await fetch("http://pipeline:8000/collect-rss", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sources, startDate, endDate }),
+    });
+
+    if (!pipelineResponse.ok) {
+      throw new Error(
+        `Pipeline error: ${pipelineResponse.status} ${pipelineResponse.statusText}`
+      );
+    }
+
+    const pipelineResult = await pipelineResponse.json();
+    console.log(
+      `Pipeline収集完了: 結果受信 - inserted=${pipelineResult.insertedCount}, skipped=${pipelineResult.skippedCount}`
+    );
+
+    // Pipelineから返された結果をそのまま返却
+    res.json(pipelineResult);
+  } catch (error: any) {
+    console.error("RSS収集エラー:", error);
+
+    if (error.message?.includes("fetch")) {
+      res.status(503).json({
+        error: "Pipeline サービスに接続できません",
+        details: error.message,
+      });
+    } else {
+      res.status(500).json({
+        error: "RSS収集処理に失敗しました",
+        details: error.message,
+      });
+    }
+  }
+});
+
+// バリデーション関数
+function validateArticleData(article: any) {
+  const errors = [];
+
+  if (
+    !article.title ||
+    typeof article.title !== "string" ||
+    !article.title.trim()
+  ) {
+    errors.push("タイトルは必須です");
+  }
+
+  if (!article.articleUrl || typeof article.articleUrl !== "string") {
+    errors.push("記事URLは必須です");
+  } else {
+    try {
+      new URL(article.articleUrl);
+    } catch {
+      errors.push("有効なURLを入力してください");
+    }
+  }
+
+  if (
+    !article.source ||
+    typeof article.source !== "string" ||
+    !article.source.trim()
+  ) {
+    errors.push("出典元は必須です");
+  }
+
+  if (!article.publishedAt) {
+    errors.push("公開日は必須です");
+  } else {
+    const date = new Date(article.publishedAt);
+    if (isNaN(date.getTime())) {
+      errors.push("有効な日付を入力してください");
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
 
 // ─── Server Start ───────────────────────────
 app.listen(port, () => {

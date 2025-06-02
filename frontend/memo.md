@@ -86,6 +86,11 @@ npm run dev
 
 ブラウザで `http://localhost:3000` にアクセスすると、アプリケーションが表示されます。
 
+## 使いたいライブラリ
+
+- [ ] [three.js](https://threejs.org/): 3D グラフィックスライブラリ
+- [ ] [View Transitions API](https://developer.mozilla.org/ja/docs/Web/API/View_Transitions_API): ページ遷移のアニメーションを実現
+
 ## 追加したいものしたいもの
 
 - [ ] メンバー紹介欄の作成

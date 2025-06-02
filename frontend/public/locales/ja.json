@@ -109,7 +109,10 @@
       "dateRange": "日付範囲",
       "from": "開始日",
       "to": "終了日",
+      "startDate": "開始日",
+      "endDate": "終了日",
       "sourceSelection": "ソース選択",
+      "selectSources": "ソース選択",
       "collectButton": "収集する",
       "addButton": "追加する",
       "summarizeButton": "要約・ラベル付け",
@@ -117,6 +120,9 @@
       "enterUrl": "URLを入力",
       "enterDate": "公開日を入力",
       "enterSource": "出典を入力",
+      "publishDate": "公開日",
+      "url": "URL",
+      "source": "出典",
       "collectionResult": "収集結果",
       "autoCollection": "自動収集は近日実装予定"
     },
@@ -159,7 +165,9 @@
     "rssFeedTab": "RSSフィード収集",
     "manualAddTab": "手動追加",
     "rssFeedTitle": "RSSフィード収集",
-    "manualAddTitle": "記事の手動追加"
+    "manualAddTitle": "記事の手動追加",
+    "collectionSettings": "収集設定",
+    "manualAddForm": "手動追加フォーム"
   },
   "adminDashboard": {
     "title": "管理者ダッシュボード",
