@@ -7,9 +7,17 @@ import { Article } from "@/types/article";
 
 interface ArticleTableProps {
   articles: Article[];
+  showCheckbox?: boolean;
+  checkedArticles?: Set<string>;
+  onCheckArticle?: (articleId: string) => void;
 }
 
-export default function ArticleTable({ articles }: ArticleTableProps) {
+export default function ArticleTable({ 
+  articles, 
+  showCheckbox = false,
+  checkedArticles = new Set(),
+  onCheckArticle 
+}: ArticleTableProps) {
   const { t } = useI18n();
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -102,6 +110,22 @@ export default function ArticleTable({ articles }: ArticleTableProps) {
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-100 dark:bg-[#1d2433]">
           <tr>
+            {showCheckbox && (
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">
+                <input
+                  type="checkbox"
+                  checked={articles.length > 0 && articles.every(a => checkedArticles.has(a.id))}
+                  onChange={() => {
+                    if (articles.every(a => checkedArticles.has(a.id))) {
+                      articles.forEach(a => onCheckArticle?.(a.id));
+                    } else {
+                      articles.forEach(a => !checkedArticles.has(a.id) && onCheckArticle?.(a.id));
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+              </th>
+            )}
             <th
               className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase cursor-pointer"
               onClick={() => handleSort("title")}
@@ -168,13 +192,24 @@ export default function ArticleTable({ articles }: ArticleTableProps) {
               key={article.id}
               className="hover:bg-gray-50 dark:hover:bg-[#2a3547]"
             >
+              {showCheckbox && (
+                <td className="px-4 py-4 whitespace-nowrap text-sm">
+                  <input
+                    type="checkbox"
+                    checked={checkedArticles.has(article.id)}
+                    onChange={() => onCheckArticle?.(article.id)}
+                    className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                </td>
+              )}
               <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200">
                 <Link
                   href={`/articles/${article.id}`}
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                   style={{ viewTransitionName: `article-title-${article.id}` }}
+                  title={article.title}
                 >
-                  {article.title}
+                  {article.title.length > 25 ? `${article.title.substring(0, 25)}...` : article.title}
                 </Link>
               </td>
               <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">

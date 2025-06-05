@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { Article } from "@/types/article";
+import { GetArticleByIdUseCase } from "../use-cases/GetArticleByIdUseCase";
+
+const getArticleUseCase = new GetArticleByIdUseCase();
 
 interface ArticleDetailProps {
   articleId: string;
@@ -16,60 +19,26 @@ export default function ArticleDetail({ articleId }: ArticleDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchArticle = async () => {
-      setLoading(true);
-      try {
-        // 実際の実装では、APIからデータを取得する
-        // 以下はモックデータ
-        await new Promise((resolve) => setTimeout(resolve, 500)); // APIリクエストをシミュレート
-
-        // モックデータとしてハードコードした記事を返す
-        // 実際の実装では、APIから特定のIDの記事を取得する
-        const mockArticle: Article = {
-          id: articleId,
-          title: "次世代半導体：3nmプロセスの量産化が始まる",
-          source: "EE Times Japan",
-          publishedAt: "2025-05-15",
-          summary:
-            "台湾のTSMCが3nmプロセスの量産を開始。次世代チップの省電力化と高性能化に期待が高まっています。",
-          labels: ["製造プロセス", "TSMC", "微細化"],
-          thumbnailUrl: "https://placehold.co/600x400?text=3nm+Process",
-          articleUrl: "https://example.com/article1",
-          fullText: `
-            半導体製造大手のTSMCは、最先端の3nmプロセス技術を用いたチップの量産を開始しました。
-            
-            ## 微細化の進展
-            
-            3nmプロセス技術は、従来の5nmプロセスと比較して性能が15～20%向上し、消費電力が25～30%削減されると言われています。これにより、スマートフォンやデータセンターなどの電力効率が大幅に改善される見込みです。
-            
-            TSMCの最高技術責任者（CTO）によると、「3nmプロセスの量産開始は、ムーアの法則の継続的な実現を示すマイルストーンとなる」と述べています。
-            
-            ## 顧客と市場
-            
-            主要顧客として、Apple、AMD、NVIDIAなどが3nmプロセスを採用する見込みです。特にAppleは、次世代のiPhoneやMacに搭載するチップに3nmプロセスを採用すると見られています。
-            
-            市場調査会社のIDCによると、3nmプロセス技術を用いたチップの市場規模は2026年までに500億ドルに達すると予測されています。
-            
-            ## 今後の展望
-            
-            TSMCはすでに次世代の2nmプロセス技術の開発を進めており、2027年の量産開始を目指しています。半導体の微細化競争は今後も続くことが予想されます。
-          `,
-          createdAt: "2025-05-15T10:00:00Z",
-          updatedAt: "2025-05-15T10:00:00Z",
-        };
-
-        setArticle(mockArticle);
-      } catch (err) {
-        console.error("Failed to fetch article:", err);
-        setError("記事の読み込みに失敗しました");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchArticle();
+  // 記事取得関数をuseCallbackでメモ化
+  const fetchArticle = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const fetchedArticle = await getArticleUseCase.execute(articleId);
+      setArticle(fetchedArticle);
+    } catch (err) {
+      console.error("Failed to fetch article:", err);
+      setError(err instanceof Error ? err.message : "記事の読み込みに失敗しました");
+      setArticle(null);
+    } finally {
+      setLoading(false);
+    }
   }, [articleId]);
+
+  useEffect(() => {
+    fetchArticle();
+  }, [fetchArticle]);
 
   // 静的な日付フォーマット（サーバーとクライアント間で一貫性を持たせるため）
   const formatDate = (dateString: string) => {
@@ -133,16 +102,39 @@ export default function ArticleDetail({ articleId }: ArticleDetailProps) {
         </div>
 
         <div className="bg-[#232b39] rounded-2xl shadow p-8">
-          {article.thumbnailUrl && (
-            <div className="relative h-64 w-full mb-6 rounded-xl overflow-hidden">
+          {/* 画像エリア（常に表示） */}
+          <div className="relative h-64 w-full mb-6 rounded-xl overflow-hidden">
+            {article.thumbnailUrl ? (
               <Image
                 src={article.thumbnailUrl}
                 alt={article.title}
                 fill
                 className="object-cover"
               />
-            </div>
-          )}
+            ) : (
+              // No Image プレースホルダー
+              <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center">
+                <div className="text-center">
+                  <svg
+                    className="mx-auto h-16 w-16 text-gray-400 mb-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="text-lg text-gray-400 font-medium">
+                    No Image
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           <h1 className="text-2xl md:text-3xl font-bold text-gray-100 mb-4">
             {article.title}
@@ -208,17 +200,19 @@ export default function ArticleDetail({ articleId }: ArticleDetailProps) {
             </p>
           </div>
 
-          {article.fullText && (
+          {article.fullText && article.fullText.trim() && (
             <div className="prose prose-invert prose-blue max-w-none">
               <h2 className="text-xl font-semibold text-gray-100 mb-3">
-                {t("articles.detail.content")}
+                本文
               </h2>
-              <div
-                className="text-gray-300 leading-relaxed"
-                dangerouslySetInnerHTML={{
-                  __html: renderMarkdown(article.fullText),
-                }}
-              />
+              <div className="bg-[#1d2433] p-6 rounded-lg">
+                <div
+                  className="text-gray-300 leading-relaxed"
+                  dangerouslySetInnerHTML={{
+                    __html: renderMarkdown(article.fullText),
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>

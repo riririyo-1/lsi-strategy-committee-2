@@ -10,8 +10,12 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 class LLMInterface(Protocol):
     """LLMサービスのインターフェース"""
     
-    def generate_summary_and_labels(self, article_text: str) -> Tuple[str, List[str]]:
+    def generate_summary_and_labels(self, article_text: str, model_name: str = None) -> Tuple[str, List[str]]:
         """記事本文から要約とラベルリストを生成"""
+        ...
+    
+    def generate_summary(self, article_text: str, model_name: str = None) -> str:
+        """記事本文から要約のみを生成"""
         ...
 
     def generate_categories(self, article_text: str) -> List[str]:
@@ -34,11 +38,13 @@ class OpenAILLMAdapter(LLMInterface):
         self.model = "gpt-4o-mini"
     
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-    def generate_summary_and_labels(self, article_text: str) -> Tuple[str, List[str]]:
+    def generate_summary_and_labels(self, article_text: str, model_name: str = None) -> Tuple[str, List[str]]:
         """記事要約とラベル生成"""
         try:
+            # model_nameが指定されている場合はそれを使用、そうでなければデフォルトを使用
+            model_to_use = model_name if model_name else self.model
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=model_to_use,
                 messages=[
                     {
                         "role": "system",
@@ -71,7 +77,38 @@ class OpenAILLMAdapter(LLMInterface):
             
         except Exception as e:
             print(f"[ERROR] OpenAI API error: {e}")
-            return "要約生成に失敗しました", []
+            raise  # エラーを再スロー（DBに保存させない）
+    
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+    def generate_summary(self, article_text: str, model_name: str = None) -> str:
+        """記事要約のみを生成"""
+        try:
+            # model_nameが指定されている場合はそれを使用、そうでなければデフォルトを使用
+            model_to_use = model_name if model_name else self.model
+            response = self.client.chat.completions.create(
+                model=model_to_use,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "あなたは半導体業界の専門記事を要約するAIアシスタントです。"
+                    },
+                    {
+                        "role": "user",
+                        "content": f"""
+次の記事を200字以内で要約してください。
+記事: {article_text}
+"""
+                    }
+                ],
+                max_tokens=300,
+                temperature=0.5
+            )
+            
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            print(f"[ERROR] OpenAI API error: {e}")
+            raise  # エラーを再スロー（DBに保存させない）
     
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
     def generate_categories(self, article_text: str) -> List[str]:
@@ -182,7 +219,7 @@ class OllamaLLMAdapter(LLMInterface):
             print(f"[ERROR] Ollama API error: {e}")
             raise
     
-    def generate_summary_and_labels(self, article_text: str) -> Tuple[str, List[str]]:
+    def generate_summary_and_labels(self, article_text: str, model_name: str = None) -> Tuple[str, List[str]]:
         """記事要約とラベル生成"""
         prompt = f"""
 記事を200字以内で要約し、関連するタグを5～10個生成してください。
@@ -206,11 +243,40 @@ class OllamaLLMAdapter(LLMInterface):
                     tags_text = line.replace("タグ:", "").strip()
                     labels = [tag.strip() for tag in tags_text.split(',') if tag.strip()]
             
-            return summary or "要約生成に失敗", labels
+            if not summary:
+                raise ValueError("Summary generation failed")
+            
+            return summary, labels
             
         except Exception as e:
             print(f"[ERROR] Ollama summary generation: {e}")
-            return "要約生成に失敗しました", []
+            raise  # エラーを再スロー（DBに保存させない）
+    
+    def generate_summary(self, article_text: str, model_name: str = None) -> str:
+        """記事要約のみを生成"""
+        prompt = f"""
+記事を200字以内で要約してください。
+
+記事: {article_text}
+
+要約: [ここに要約]
+"""
+        try:
+            response = self._call_ollama(prompt)
+            for line in response.strip().split('\n'):
+                if line.startswith("要約:"):
+                    summary = line.replace("要約:", "").strip()
+                    return summary
+            
+            # フォーマットが異なる場合は最初の200文字を返すが、空の場合はエラー
+            result = response.strip()[:200]
+            if not result:
+                raise ValueError("Summary generation failed")
+            return result
+            
+        except Exception as e:
+            print(f"[ERROR] Ollama summary generation: {e}")
+            raise  # エラーを再スロー（DBに保存させない）
     
     def generate_categories(self, article_text: str) -> List[str]:
         """カテゴリ自動分類"""
@@ -260,8 +326,11 @@ class OllamaLLMAdapter(LLMInterface):
 class DummyLLMAdapter(LLMInterface):
     """テスト用ダミーLLMアダプター"""
     
-    def generate_summary_and_labels(self, article_text: str) -> Tuple[str, List[str]]:
+    def generate_summary_and_labels(self, article_text: str, model_name: str = None) -> Tuple[str, List[str]]:
         return "ダミー要約", ["半導体", "技術", "動向"]
+    
+    def generate_summary(self, article_text: str, model_name: str = None) -> str:
+        return "ダミー要約"
     
     def generate_categories(self, article_text: str) -> List[str]:
         return ["技術動向"]

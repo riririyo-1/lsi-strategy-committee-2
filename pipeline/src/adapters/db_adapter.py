@@ -84,6 +84,20 @@ class DatabaseAdapter:
                 )
                 return cur.fetchall()
     
+    def get_article_by_id(self, article_id: str) -> Optional[dict]:
+        """指定されたIDの記事を取得"""
+        with self.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, title, "articleUrl" as url, source, summary, labels, "thumbnailUrl" as thumbnail_url, "publishedAt" as published, "fullText" as content
+                    FROM "Article"
+                    WHERE id = %s
+                    """,
+                    (article_id,)
+                )
+                return cur.fetchone()
+    
     def update_article_summary_and_labels(self, article_id: str, summary: str, labels: List[str]) -> None:
         """記事の要約とラベルを更新"""
         with self.get_connection() as conn:
@@ -92,6 +106,30 @@ class DatabaseAdapter:
                     "UPDATE \"Article\" SET summary=%s, labels=%s WHERE id=%s",
                     (summary, labels, article_id)
                 )
+    
+    def update_article_summary(self, article_id: str, summary: str) -> None:
+        """記事の要約のみを更新"""
+        with self.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE \"Article\" SET summary=%s WHERE id=%s",
+                    (summary, article_id)
+                )
+    
+    def update_article_field(self, article_id: str, field_name: str, value) -> None:
+        """記事の特定フィールドを更新"""
+        with self.get_connection() as conn:
+            with conn.cursor() as cur:
+                # フィールド名のサニタイゼーション（SQLインジェクション対策）
+                allowed_fields = ["summary", "labels", "categories", "thumbnailUrl"]
+                if field_name not in allowed_fields:
+                    raise ValueError(f"Field '{field_name}' is not allowed for update")
+                
+                # PostgreSQLのフィールド名を適切にクォート
+                quoted_field = f'"{field_name}"'
+                query = f"UPDATE \"Article\" SET {quoted_field}=%s WHERE id=%s"
+                
+                cur.execute(query, (value, article_id))
     
     def get_latest_articles(self, limit: int = 10) -> List[dict]:
         """最新記事を取得"""

@@ -107,3 +107,38 @@ model ResearchArticle {
   
   @@unique([researchId, articleId])
 }
+
+model Schedule {
+  id             String   @id @default(uuid())
+  name           String
+  description    String?
+  scheduleType   String   // "daily", "weekly", "monthly", "custom"
+  cronExpression String?  // Cron式（カスタムスケジュール用）
+  time           String?  // HH:MM形式
+  dayOfWeek      Int?     // 0-6 (日曜日=0)
+  dayOfMonth     Int?     // 1-31
+  taskType       String   // "rss_collection", "labeling", "summarization", "categorization", "batch_process"
+  taskConfig     Json     // タスク設定（JSON形式）
+  isActive       Boolean  @default(true)
+  lastRun        DateTime?
+  nextRun        DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // リレーション
+  executions     ScheduleExecution[]
+}
+
+model ScheduleExecution {
+  id          String   @id @default(uuid())
+  scheduleId  String
+  status      String   // "pending", "running", "completed", "failed"
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  result      Json?    // 実行結果（JSON形式）
+  errorMessage String?
+  createdAt   DateTime @default(now())
+  
+  // リレーション
+  schedule    Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+}

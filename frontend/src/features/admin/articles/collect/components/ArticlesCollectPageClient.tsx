@@ -6,12 +6,19 @@ import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { Article } from "@/types/article";
 import ArticleTable from "@/features/articles/components/ArticleTable";
 import { articlesApi } from "@/lib/apiClient";
+import ArticleManagementTab from "./ArticleManagementTab";
+import ScheduleSettingsTab from "@/features/admin/schedules/components/ScheduleSettingsTab";
 
 // RSS収集用のコンポーネント
 function RSSCollectionTab() {
   const { t } = useI18n();
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // デフォルトで過去7日間を設定
+  const today = new Date();
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  
+  const [startDate, setStartDate] = useState(weekAgo.toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [collectedArticles, setCollectedArticles] = useState<Article[]>([]);
   const [isCollecting, setIsCollecting] = useState(false);
@@ -46,24 +53,32 @@ function RSSCollectionTab() {
       const result = response.data;
       console.log("RSS収集結果:", result);
 
-      // 結果に基づいて収集した記事の情報を表示用にモック作成
-      // 実際のAPIからは詳細な記事データが返ってこないため、結果数のみ表示
-      const mockCollectedArticles: Article[] = [];
-      for (let i = 0; i < (result.insertedCount || 0); i++) {
-        mockCollectedArticles.push({
-          id: `rss-${i}`,
-          title: `収集された記事 ${i + 1}`,
-          source: selectedSources[i % selectedSources.length],
-          publishedAt: new Date().toISOString(),
-          summary: "RSS収集により自動取得された記事です",
-          labels: [],
-          articleUrl: `https://example.com/rss-article-${i}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+      // RSS収集が成功した場合、実際の記事データを取得
+      if (result.insertedCount > 0 || result.skippedCount > 0) {
+        try {
+          // 最新の記事を取得
+          const articlesResponse = await articlesApi.getAll();
+          const allArticles = articlesResponse.data;
+          
+          // 選択したソースの記事のみをフィルタリング
+          const filteredArticles = allArticles
+            .filter((article: Article) => selectedSources.includes(article.source))
+            .sort((a: Article, b: Article) => 
+              new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+            )
+            .slice(0, result.insertedCount + result.skippedCount); // 収集した件数分だけ表示
+          
+          setCollectedArticles(filteredArticles);
+          console.log(`実際の記事 ${filteredArticles.length} 件を表示`);
+        } catch (error) {
+          console.error("記事取得エラー:", error);
+          // エラーの場合は空配列をセット
+          setCollectedArticles([]);
+        }
+      } else {
+        // 収集件数が0の場合は空配列をセット
+        setCollectedArticles([]);
       }
-
-      setCollectedArticles(mockCollectedArticles);
 
       // 成功メッセージの表示
       let message = "";
@@ -75,6 +90,14 @@ function RSSCollectionTab() {
       }
       if (result.invalidCount > 0) {
         message += ` ${result.invalidCount} 件の記事は登録できませんでした。`;
+        
+        // 無効な記事の詳細表示
+        if (result.invalidItems && result.invalidItems.length > 0) {
+          message += "\n\n【登録できなかった記事】\n";
+          result.invalidItems.forEach((item: any, index: number) => {
+            message += `${index + 1}. ${item.article?.title || '不明'} - ${item.errors?.join(', ') || 'エラー詳細不明'}\n`;
+          });
+        }
       }
 
       alert(message || "RSS収集が完了しました。");
@@ -429,7 +452,7 @@ function ManualAddTab() {
 
 export default function ArticlesCollectPageClient() {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<"rss" | "manual">("rss");
+  const [activeTab, setActiveTab] = useState<"management" | "rss" | "manual" | "schedule">("management");
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-[#181e29] py-20 px-4">
@@ -472,6 +495,16 @@ export default function ArticlesCollectPageClient() {
           <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="-mb-px flex space-x-8">
               <button
+                onClick={() => setActiveTab("management")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "management"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
+                }`}
+              >
+                記事管理
+              </button>
+              <button
                 onClick={() => setActiveTab("rss")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === "rss"
@@ -479,7 +512,7 @@ export default function ArticlesCollectPageClient() {
                     : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
                 }`}
               >
-                {t("articlesCollect.rssFeedTab")}
+                RSS収集
               </button>
               <button
                 onClick={() => setActiveTab("manual")}
@@ -489,14 +522,27 @@ export default function ArticlesCollectPageClient() {
                     : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
                 }`}
               >
-                {t("articlesCollect.manualAddTab")}
+                手動追加
+              </button>
+              <button
+                onClick={() => setActiveTab("schedule")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "schedule"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
+                }`}
+              >
+                定期設定
               </button>
             </nav>
           </div>
         </div>
 
         {/* タブコンテンツ */}
-        {activeTab === "rss" ? <RSSCollectionTab /> : <ManualAddTab />}
+        {activeTab === "management" && <ArticleManagementTab />}
+        {activeTab === "rss" && <RSSCollectionTab />}
+        {activeTab === "manual" && <ManualAddTab />}
+        {activeTab === "schedule" && <ScheduleSettingsTab />}
       </div>
     </div>
   );

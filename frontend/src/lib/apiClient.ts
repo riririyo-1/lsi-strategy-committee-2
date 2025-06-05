@@ -57,6 +57,8 @@ export const articlesApi = {
     publishedAt: string;
   }) => apiClient.post("/api/articles", data),
   delete: (id: string) => apiClient.delete(`/api/articles/${id}`),
+  deleteMany: (data: { ids: string[] }) =>
+    apiClient.delete("/api/articles", { data }),
   deleteMultiple: (ids: string[]) =>
     apiClient.delete("/api/articles", { data: { ids } }),
   getLabels: () => apiClient.get("/api/articles/labels"),
@@ -105,6 +107,23 @@ export const healthApi = {
   check: () => apiClient.get("/api/health"),
 };
 
+// Schedules API
+export const schedulesApi = {
+  getAll: () => apiClient.get("/api/schedules"),
+  getById: (id: string) => apiClient.get(`/api/schedules/${id}`),
+  create: (data: any) => apiClient.post("/api/schedules", data),
+  update: (id: string, data: any) => apiClient.put(`/api/schedules/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/api/schedules/${id}`),
+  activate: (id: string) => apiClient.post(`/api/schedules/${id}/activate`),
+  deactivate: (id: string) => apiClient.post(`/api/schedules/${id}/deactivate`),
+  getExecutions: (scheduleId: string, limit?: number) => 
+    apiClient.get(`/api/schedules/${scheduleId}/executions${limit ? `?limit=${limit}` : ""}`),
+  getLatestExecution: (scheduleId: string) => 
+    apiClient.get(`/api/schedules/${scheduleId}/executions/latest`),
+  executeNow: (scheduleId: string) => 
+    apiClient.post(`/api/schedules/${scheduleId}/execute`),
+};
+
 // ===== PIPELINE APIs (FastAPI) =====
 
 // Pipeline Health & Status API
@@ -130,12 +149,33 @@ export const crawlApi = {
 
 // Summarize API (記事要約・分類)
 export const summarizeApi = {
-  // 記事要約・ラベル付け
+  // 記事要約・ラベル付け（llm_routerを使用）
   summarize: (data: {
     article_ids?: string[];
     include_labeling?: boolean;
     model_name?: string;
-  }) => pipelineClient.post("/api/summarize", data),
+  }) => {
+    // include_labelingに応じてエンドポイントを切り替え
+    if (data.include_labeling === false) {
+      // 要約のみの場合
+      return pipelineClient.post("/api/llm/summarize-only", {
+        article_ids: data.article_ids,
+        limit: 50
+      });
+    } else if (data.include_labeling === true) {
+      // ラベルのみの場合
+      return pipelineClient.post("/api/llm/labels-only", {
+        article_ids: data.article_ids,
+        limit: 50
+      });
+    } else {
+      // デフォルト：要約とラベル両方
+      return pipelineClient.post("/api/llm/summarize", {
+        article_ids: data.article_ids,
+        limit: 50
+      });
+    }
+  },
 
   // 記事カテゴリ分類
   categorize: (data: {

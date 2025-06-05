@@ -30,9 +30,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/articles`);
+    // URLからクエリパラメータを取得
+    const { searchParams } = new URL(request.url);
+    const queryString = searchParams.toString();
+    
+    // クエリパラメータを含めてバックエンドAPIを呼び出し
+    const apiUrl = queryString 
+      ? `${API_BASE_URL}/api/articles?${queryString}`
+      : `${API_BASE_URL}/api/articles`;
+    
+    const response = await fetch(apiUrl);
     const data = await response.json();
 
     if (!response.ok) {

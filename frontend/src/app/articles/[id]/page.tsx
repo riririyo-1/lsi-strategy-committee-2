@@ -13,8 +13,31 @@ export const revalidate = 0;
 export const generateMetadata = async ({
   params,
 }: ArticleDetailPageProps): Promise<Metadata> => {
-  // 実際の実装では記事情報をAPIから取得し、メタデータを生成する
-  const resolvedParams = await params;
+  try {
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
+    
+    // サーバーサイドでAPI呼び出し
+    const apiUrl = process.env.API_URL_INTERNAL || "http://localhost:4000";
+    const response = await fetch(`${apiUrl}/api/articles/${id}`);
+    
+    if (response.ok) {
+      const article = await response.json();
+      return {
+        title: `${article.title} - LSI戦略コミッティ`,
+        description: article.summary || "半導体業界の記事詳細を表示します",
+        openGraph: {
+          title: article.title,
+          description: article.summary,
+          images: article.thumbnailUrl ? [article.thumbnailUrl] : [],
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Error fetching article metadata:", error);
+  }
+  
+  // フォールバック
   return {
     title: `記事詳細 - LSI戦略コミッティ`,
     description: "半導体業界の記事詳細を表示します",

@@ -7,10 +7,10 @@ itmedia:
   - name: "ITmedia"
     url: "https://rss.itmedia.co.jp/rss/2.0/itmedia_all.xml"
 nhk:
-  - name: "NHK"
-    url: "https://www3.nhk.or.jp/rss/news/cat3.xml" # 科学
-  - name: "NHK"
-    url: "https://www3.nhk.or.jp/rss/news/cat5.xml" # 経済
+  - name: "NHK" # 科学
+    url: "https://www3.nhk.or.jp/rss/news/cat3.xml"
+  - name: "NHK" # 経済
+    url: "https://www3.nhk.or.jp/rss/news/cat5.xml"
 mynavi_techplus:
   - name: "マイナビ Tech+"
     url: "https://news.mynavi.jp/rss/techplus/enterprise"

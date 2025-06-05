@@ -75,9 +75,12 @@ export default function TopicsAdminPage() {
                   合計: {topics.length}件のTOPICS
                 </span>
               </div>
-              <button className="bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded transition text-sm flex items-center">
+              <Link
+                href="/admin/topics/create"
+                className="bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded transition text-sm flex items-center"
+              >
                 <span className="mr-1">+</span>新規TOPICS作成
-              </button>
+              </Link>
             </div>
             <div className="mb-6">
               <input
@@ -118,7 +121,7 @@ export default function TopicsAdminPage() {
                   )}
                   <div className="flex gap-2 mt-auto">
                     <Link
-                      href={`/admin/topics/${topic.id}`}
+                      href={`/admin/topics/edit/${topic.id}`}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition text-sm"
                     >
                       編集

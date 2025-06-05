@@ -9,11 +9,18 @@ import aiohttp
 import feedparser
 from datetime import datetime, timedelta
 import requests
+import yaml
+from pathlib import Path
 
 # ルーターのインポート
 from routers.crawl_router import router as crawl_router
 from routers.summarize_router import router as summarize_router
 from routers.topics_router import router as topics_router
+from routers.llm_router import router as llm_router
+
+# サービスのインポート
+from services.scraping_service import scraping_service
+from adapters.llm_adapter import llm_adapter
 
 
 @asynccontextmanager
@@ -81,6 +88,7 @@ app.add_middleware(
 app.include_router(crawl_router)
 app.include_router(summarize_router)
 app.include_router(topics_router)
+app.include_router(llm_router)
 
 
 @app.get("/")
@@ -94,7 +102,8 @@ async def root():
         "endpoints": {
             "crawl": "/api/crawl",
             "summarize": "/api/summarize", 
-            "topics": "/api/topics"
+            "topics": "/api/topics",
+            "llm": "/api/llm"
         }
     }
 
@@ -138,11 +147,13 @@ async def api_status():
     return {
         "api_version": "2.0.0",
         "available_endpoints": [
-            {"path": "/api/crawl", "methods": ["POST"], "description": "RSS記事収集"},
+            {"path": "/api/crawl", "methods": ["POST"], "description": "RSS記事収集（本文取得のみ）"},
             {"path": "/api/crawl/latest", "methods": ["GET"], "description": "最新記事取得"},
-            {"path": "/api/summarize", "methods": ["POST"], "description": "記事要約・ラベル付け"},
-            {"path": "/api/categorize", "methods": ["POST"], "description": "カテゴリ自動分類"},
-            {"path": "/api/topics/generate", "methods": ["POST"], "description": "TOPICS生成"},
+            {"path": "/api/llm/summarize", "methods": ["POST"], "description": "LLM要約・ラベル付け"},
+            {"path": "/api/llm/categorize", "methods": ["POST"], "description": "LLMカテゴリ自動分類"},
+            {"path": "/api/llm/topics/categorize", "methods": ["POST"], "description": "TOPICS記事カテゴリ分類支援"},
+            {"path": "/api/llm/topics/summary", "methods": ["POST"], "description": "TOPICS全体サマリ生成支援"},
+            {"path": "/api/llm/status", "methods": ["GET"], "description": "LLMサービスステータス"},
             {"path": "/api/topics/{topic_id}", "methods": ["GET"], "description": "TOPICS詳細"},
         ],
         "template_types": ["default", "summary", "detailed"],
@@ -170,13 +181,38 @@ async def collect_rss(request: RSSCollectRequest):
     """RSS収集エンドポイント - Express API経由でDB保存"""
     print(f"RSS収集開始: {request.sources}")
     
-    # RSS URLマッピング（デモ用）
-    rss_urls = {
-        "ITmedia": "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",
-        "NHK": "https://www3.nhk.or.jp/rss/news/cat0.xml",
-        "EE Times Japan": "https://eetimes.itmedia.co.jp/ee/rss/news.xml",
-        "マイナビ": "https://news.mynavi.jp/rss"
-    }
+    # rss_feeds.yamlからURL情報を読み込み
+    feeds_file = Path(__file__).parent / "rss_feeds.yaml"
+    with open(feeds_file, 'r', encoding='utf-8') as f:
+        feeds_config = yaml.safe_load(f)
+    
+    # ソース名とURLのマッピングを構築（新しい形式に対応）
+    rss_urls = {}
+    
+    # 各フィードカテゴリから複数URLを取得
+    for category, feeds in feeds_config.items():
+        if category == "eetimes":
+            # EE Times Japan
+            for feed in feeds:
+                rss_urls["EE Times Japan"] = feed["url"]
+                break  # 最初の1つを使用
+        elif category == "itmedia":
+            # ITmedia
+            for feed in feeds:
+                rss_urls["ITmedia"] = feed["url"]
+                break  # 最初の1つを使用
+        elif category == "nhk":
+            # NHK (複数フィードを統合)
+            nhk_urls = [feed["url"] for feed in feeds]
+            # 最初のNHKフィードをメインとして使用（複数フィード対応は後で実装）
+            rss_urls["NHK"] = nhk_urls[0]
+        elif category == "mynavi_techplus":
+            # マイナビ（複数フィードを統合）
+            mynavi_urls = [feed["url"] for feed in feeds]
+            # 最初のマイナビフィードをメインとして使用（複数フィード対応は後で実装）
+            rss_urls["マイナビ"] = mynavi_urls[0]
+    
+    print(f"RSS URLマッピング: {rss_urls}")
     
     collected_articles = []
     
@@ -207,27 +243,41 @@ async def collect_rss(request: RSSCollectRequest):
         # Express APIのバッチ作成エンドポイントに送信
         if collected_articles:
             try:
-                batch_response = requests.post(
-                    "http://server:4000/api/articles/batch_create",
-                    json={"articles": collected_articles},
-                    headers={"Content-Type": "application/json"},
-                    timeout=30
-                )
+                # 大量データの場合、小分けして送信（20件ずつ）
+                batch_size = 20
+                total_inserted = 0
+                total_skipped = 0
+                total_invalid = 0
                 
-                if batch_response.status_code == 200:
-                    batch_result = batch_response.json()
-                    print(f"DB保存完了: inserted={batch_result['insertedCount']}, skipped={batch_result['skippedCount']}")
-                    return batch_result
-                else:
-                    print(f"DB保存エラー: {batch_response.status_code} {batch_response.text}")
-                    return {
-                        "success": False,
-                        "error": "データベース保存に失敗しました",
-                        "insertedCount": 0,
-                        "skippedCount": 0,
-                        "invalidCount": len(collected_articles),
-                        "invalidItems": collected_articles
-                    }
+                for i in range(0, len(collected_articles), batch_size):
+                    batch_articles = collected_articles[i:i + batch_size]
+                    print(f"バッチ送信 {i//batch_size + 1}/{(len(collected_articles) + batch_size - 1)//batch_size}: {len(batch_articles)}件")
+                    
+                    batch_response = requests.post(
+                        "http://server:4000/api/articles/batch_create",
+                        json={"articles": batch_articles},
+                        headers={"Content-Type": "application/json"},
+                        timeout=30
+                    )
+                    
+                    if batch_response.status_code == 200:
+                        batch_result = batch_response.json()
+                        total_inserted += batch_result.get('insertedCount', 0)
+                        total_skipped += batch_result.get('skippedCount', 0)
+                        total_invalid += batch_result.get('invalidCount', 0)
+                        print(f"  バッチ保存完了: inserted={batch_result.get('insertedCount', 0)}, skipped={batch_result.get('skippedCount', 0)}")
+                    else:
+                        print(f"  バッチ保存エラー: {batch_response.status_code} {batch_response.text[:200]}")
+                        total_invalid += len(batch_articles)
+                
+                print(f"全バッチ処理完了: total_inserted={total_inserted}, total_skipped={total_skipped}, total_invalid={total_invalid}")
+                return {
+                    "success": True,
+                    "insertedCount": total_inserted,
+                    "skippedCount": total_skipped,
+                    "invalidCount": total_invalid,
+                    "invalidItems": []
+                }
             except Exception as e:
                 print(f"Express API呼び出しエラー: {e}")
                 return {
@@ -254,6 +304,7 @@ async def collect_rss(request: RSSCollectRequest):
 async def collect_from_source(source_name: str, rss_url: str, start_date: str, end_date: str):
     """単一ソースからの記事収集"""
     try:
+        print(f"{source_name}: RSS取得開始 - {rss_url}")
         timeout = aiohttp.ClientTimeout(total=15)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(rss_url) as response:
@@ -263,6 +314,8 @@ async def collect_from_source(source_name: str, rss_url: str, start_date: str, e
                 rss_content = await response.text()
         
         feed = feedparser.parse(rss_content)
+        print(f"{source_name}: フィード解析完了 - {len(feed.entries)}件のエントリー")
+        
         if not feed.entries:
             print(f"{source_name}: フィードが空です")
             return []
@@ -275,6 +328,14 @@ async def collect_from_source(source_name: str, rss_url: str, start_date: str, e
         except ValueError:
             print(f"日付形式エラー: {start_date}, {end_date}")
             return []
+        
+        print(f"{source_name}: 日付範囲 {start_dt} 〜 {end_dt}")
+        
+        # デバッグ用：最初の5件の記事情報を表示
+        for i, entry in enumerate(feed.entries[:5]):
+            print(f"{source_name} エントリー{i+1}: {getattr(entry, 'title', 'タイトルなし')}")
+            if hasattr(entry, 'published'):
+                print(f"  公開日: {entry.published}")
         
         for entry in feed.entries:
             try:
@@ -291,22 +352,58 @@ async def collect_from_source(source_name: str, rss_url: str, start_date: str, e
                         published_dt = parser.parse(entry.published)
                 
                 if not published_dt:
-                    continue
+                    print(f"  警告: 日付解析失敗 - {getattr(entry, 'title', 'タイトルなし')[:50]}")
+                    # 日付が解析できない場合は現在日時を使用
+                    published_dt = datetime.now()
                 
-                # 日付フィルタリング
+                # 日付フィルタリング（デバッグ情報付き）
                 if start_dt <= published_dt <= end_dt:
+                    print(f"  ✓ 日付範囲内: {published_dt} - {getattr(entry, 'title', 'タイトルなし')[:50]}")
+                else:
+                    # デバッグ用：日付範囲外の記事も最初の3件は表示
+                    if len(articles) < 3:
+                        print(f"  ✗ 日付範囲外: {published_dt} - {getattr(entry, 'title', 'タイトルなし')[:50]}")
+                
+                # 日付フィルタリング（元に戻す）
+                if start_dt <= published_dt <= end_dt:
+                    article_url = entry.link if hasattr(entry, 'link') else ""
+                    article_title = entry.title.strip() if hasattr(entry, 'title') else "タイトル不明"
+                    
+                    # 記事本文とOGP画像をスクレイピング
+                    article_content = ""
+                    og_image = extract_thumbnail(entry)  # RSSから取得できない場合の初期値
+                    
+                    if article_url:
+                        try:
+                            print(f"  記事スクレイピング開始: {article_title[:50]}")
+                            content, scraped_image = await scraping_service.fetch_article_content(article_url)
+                            if content:
+                                article_content = content
+                                print(f"  ✓ 本文取得成功: {len(article_content)}文字")
+                            if scraped_image:
+                                og_image = scraped_image
+                                print(f"  ✓ 画像取得成功: {scraped_image[:50]}...")
+                        except Exception as scrape_error:
+                            print(f"  ✗ スクレイピング失敗: {scrape_error}")
+                    
+                    # RSS収集時はLLM処理をスキップ（別APIで実行）
+                    summary = entry.get("summary", "")[:500] if hasattr(entry, "summary") else ""
+                    
                     article = {
-                        "title": entry.title.strip() if hasattr(entry, 'title') else "タイトル不明",
-                        "articleUrl": entry.link if hasattr(entry, 'link') else "",
+                        "title": article_title,
+                        "articleUrl": article_url,
                         "source": source_name,
                         "publishedAt": published_dt.isoformat(),
-                        "summary": entry.get("summary", "")[:500],  # 500文字制限
-                        "thumbnailUrl": extract_thumbnail(entry)
+                        "summary": summary,  # RSS要約のみ
+                        "labels": [],  # 空配列（LLM処理は別途）
+                        "thumbnailUrl": og_image,
+                        "content": article_content  # 本文を保存
                     }
                     
                     # 必須フィールドチェック
                     if article["title"] and article["articleUrl"]:
                         articles.append(article)
+                        print(f"  ✓ 記事追加完了: {article_title[:50]}")
             
             except Exception as entry_error:
                 print(f"{source_name}のエントリ処理エラー: {entry_error}")

@@ -1,1 +1,0 @@
-# lsi-strategy-committee-2

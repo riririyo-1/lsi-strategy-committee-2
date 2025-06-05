@@ -11,6 +11,8 @@ router = APIRouter(prefix="/api", tags=["summarize"])
 class SummarizeRequest(BaseModel):
     article_ids: Optional[List[str]] = None
     limit: Optional[int] = 50
+    include_labeling: Optional[bool] = True
+    model_name: Optional[str] = "claude-3-haiku-20240307"
 
 
 class SummarizeResponse(BaseModel):
@@ -36,10 +38,18 @@ async def summarize_articles(request: SummarizeRequest):
     try:
         if request.article_ids:
             # 特定の記事を処理
-            result = summarize_service.summarize_specific_articles(request.article_ids)
+            result = summarize_service.summarize_specific_articles(
+                article_ids=request.article_ids,
+                include_labeling=request.include_labeling,
+                model_name=request.model_name
+            )
         else:
             # 要約されていない記事を一括処理
-            result = summarize_service.summarize_articles(request.limit or 50)
+            result = summarize_service.summarize_articles(
+                limit=request.limit or 50,
+                include_labeling=request.include_labeling,
+                model_name=request.model_name
+            )
         
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])

@@ -12,7 +12,19 @@ const nextConfig = {
   },
   // 画像ドメインの設定
   images: {
-    domains: ["placehold.co", "images.unsplash.com"], // 必要なドメインを許可
+    domains: [
+      "placehold.co", 
+      "images.unsplash.com",
+      // RSS記事の画像ドメイン
+      "www3.nhk.or.jp",
+      "image.itmedia.co.jp",
+      "eetimes.itmedia.co.jp",
+      "news.mynavi.jp",
+      "image.news.livedoor.com",
+      "cdn-ak.f.st-hatena.com",
+      "ogp.me",
+      "graph.facebook.com"
+    ],
   },
 };
 

@@ -52,7 +52,7 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'sleep 3' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
     echo '# Start the main server' >> /app/start.sh && \
-    echo 'node dist/index.js' >> /app/start.sh && \
+    echo 'node dist/app.js' >> /app/start.sh && \
     chmod +x /app/start.sh
 
 # Create non-root user
