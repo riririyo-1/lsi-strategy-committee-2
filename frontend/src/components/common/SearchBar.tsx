@@ -5,9 +5,10 @@ import { useI18n } from "@/features/i18n/hooks/useI18n";
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
+  placeholder?: string;
 }
 
-export default function SearchBar({ onSearch }: SearchBarProps) {
+export default function SearchBar({ onSearch, placeholder }: SearchBarProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
 
@@ -16,8 +17,10 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
     onSearch(query);
   };
 
+  const defaultPlaceholder = placeholder || `${t("articles.search")}...`;
+
   return (
-    <form onSubmit={handleSubmit} className="w-full lg:w-3/4">
+    <form onSubmit={handleSubmit} className="w-full mx-auto">
       <div className="relative">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
           <svg
@@ -38,7 +41,7 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
         <input
           type="text"
           className="w-full bg-[#1d2433] text-gray-200 rounded-xl pl-10 pr-4 py-3 outline-none ring-1 ring-gray-700/50 focus:ring-blue-500/50 transition-all placeholder-gray-500"
-          placeholder={`${t("articles.search")}...`}
+          placeholder={defaultPlaceholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

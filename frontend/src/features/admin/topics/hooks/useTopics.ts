@@ -62,6 +62,7 @@ export function useTopics(): UseTopicsResult {
         setCurrentPage(result.page);
         setPageSize(result.pageSize);
       } catch (e) {
+        console.error("Error fetching topics:", e);
         setError(e instanceof Error ? e : new Error("Unknown error occurred"));
         setTopics([]);
         setTotalTopics(0);

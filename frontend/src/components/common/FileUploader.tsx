@@ -11,15 +11,12 @@ interface FileUploaderProps {
   maxSizeMB?: number;
 }
 
-/**
- * ファイルアップロードコンポーネント
- */
 const FileUploader: React.FC<FileUploaderProps> = ({
   accept,
   onUpload,
   label,
   currentValue,
-  maxSizeMB = 10, // デフォルトの最大ファイルサイズ（MB）
+  maxSizeMB = 10,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +28,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
     setError(null);
 
-    // ファイルサイズのバリデーション
-    const maxSize = maxSizeMB * 1024 * 1024; // MB to bytes
+    const maxSize = maxSizeMB * 1024 * 1024;
     if (file.size > maxSize) {
       setError(`ファイルサイズは${maxSizeMB}MB以下である必要があります`);
       return;
@@ -40,12 +36,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
     try {
       setIsUploading(true);
-      setProgress(10); // 開始時の進行状況
+      setProgress(10);
 
       const formData = new FormData();
       formData.append("file", file);
 
-      // アップロードのシミュレーション
       const simulateProgress = () => {
         setProgress((prev) => {
           if (prev >= 90) return prev;

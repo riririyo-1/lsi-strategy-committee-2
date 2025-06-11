@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import PageWithBackground from "@/components/common/PageWithBackground";
 import ResearchReportForm from "@/features/admin/components/ResearchReportForm";
@@ -9,9 +9,9 @@ import { TrendReport } from "@/types/trendReport";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 
 interface ResearchReportEditPageProps {
-  params: {
+  params: Promise<{
     id?: string;
-  };
+  }>;
 }
 
 export default function ResearchReportEditPage({
@@ -22,7 +22,8 @@ export default function ResearchReportEditPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isEditing = !!params.id;
+  const resolvedParams = use(params);
+  const isEditing = !!resolvedParams.id;
 
   const { t } = useI18n();
 
@@ -30,9 +31,9 @@ export default function ResearchReportEditPage({
     async function loadReport() {
       if (isEditing) {
         try {
-          console.log("編集ページ読み込み - レポートID:", params.id);
+          console.log("編集ページ読み込み - レポートID:", resolvedParams.id);
           const loadedReport = await ResearchReportService.getReportById(
-            params.id!
+            resolvedParams.id!
           );
           console.log("取得したレポートデータ:", loadedReport);
           if (!loadedReport) {
@@ -52,16 +53,16 @@ export default function ResearchReportEditPage({
     }
 
     loadReport();
-  }, [isEditing, params.id]);
+  }, [isEditing, resolvedParams.id]);
 
   const handleSave = async (reportData: TrendReport) => {
     try {
-      if (isEditing && params.id) {
-        console.log("更新するレポートID:", params.id);
+      if (isEditing && resolvedParams.id) {
+        console.log("更新するレポートID:", resolvedParams.id);
         console.log("更新データ:", reportData);
         // idプロパティを除外して新しいオブジェクトを作成
         const { id, ...updateData } = reportData;
-        await ResearchReportService.updateReport(params.id, updateData);
+        await ResearchReportService.updateReport(resolvedParams.id, updateData);
       } else {
         await ResearchReportService.createReport(reportData);
       }

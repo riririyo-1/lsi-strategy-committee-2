@@ -6,6 +6,7 @@ import { ResearchReportService } from "@/features/admin/services/ResearchReportS
 import ReportCard from "./ReportCard";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { PageLayout } from "@/components/common/PageLayout";
 
 const ResearchPageClient = () => {
   // i18n機能を使用
@@ -37,22 +38,27 @@ const ResearchPageClient = () => {
     fetchReports();
   }, []);
 
-  return (
-    <>
-      <h1 className="text-4xl md:text-5xl font-bold mb-10 text-center text-white text-shadow">
-        {t("research.title")}
-      </h1>
-      <p className="text-xl mb-8 text-center max-w-4xl">
-        {t("research.description")}
-      </p>
-
-      {loading ? (
-        <div className="flex flex-col items-center justify-center h-48">
-          <Loader2 className="h-12 w-12 animate-spin text-sky-400" />
-          <p className="mt-4 text-lg">レポートを読み込み中...</p>
+  if (loading) {
+    return (
+      <PageLayout
+        title={t("research.title")}
+        description={t("research.description")}
+      >
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-12 w-12 animate-spin text-white" />
+          <p className="mt-4 text-lg text-white">レポートを読み込み中...</p>
         </div>
-      ) : error ? (
-        <div className="bg-red-100/70 dark:bg-red-900/50 text-red-800 dark:text-red-200 p-4 rounded-lg">
+      </PageLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageLayout
+        title={t("research.title")}
+        description={t("research.description")}
+      >
+        <div className="bg-red-500/20 text-red-200 p-4 rounded-lg">
           <p>{error}</p>
           <button
             onClick={() => window.location.reload()}
@@ -61,9 +67,18 @@ const ResearchPageClient = () => {
             再読み込み
           </button>
         </div>
-      ) : reports.length === 0 ? (
+      </PageLayout>
+    );
+  }
+
+  return (
+    <PageLayout
+      title={t("research.title")}
+      description={t("research.description")}
+    >
+      {reports.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-xl">現在公開されているレポートはありません。</p>
+          <p className="text-xl text-white">現在公開されているレポートはありません。</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -72,7 +87,7 @@ const ResearchPageClient = () => {
           ))}
         </div>
       )}
-    </>
+    </PageLayout>
   );
 };
 

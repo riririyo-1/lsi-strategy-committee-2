@@ -6,6 +6,7 @@ import { Schedule, ScheduleFormData } from "@/types/schedule";
 import ScheduleList from "./ScheduleList";
 import ScheduleForm from "./ScheduleForm";
 import { ApiScheduleRepository } from "../infrastructure/ApiScheduleRepository";
+import { Button } from "@/components/common/Button";
 import {
   GetSchedulesUseCase,
   CreateScheduleUseCase,
@@ -127,27 +128,25 @@ export default function ScheduleSettingsTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
       {/* ヘッダー */}
-      <div className="bg-white dark:bg-[#1d2433] rounded-lg p-6 shadow">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-              定期実行設定
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-white">
+            定期実行設定
+          </h2>
+          <p className="text-sm text-white/70 mt-1">
               RSS収集やLLM処理などのタスクを定期的に自動実行する設定を管理します
             </p>
-          </div>
-          {!showForm && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
-            >
-              新規スケジュール作成
-            </button>
-          )}
         </div>
+        {!showForm && (
+          <Button
+            onClick={() => setShowForm(true)}
+            variant="primary"
+          >
+            新規スケジュール作成
+          </Button>
+        )}
       </div>
 
       {/* エラーメッセージ */}
@@ -159,9 +158,8 @@ export default function ScheduleSettingsTab() {
 
       {/* フォームまたは一覧 */}
       {showForm ? (
-        <div className="bg-white dark:bg-[#1d2433] rounded-lg shadow">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-6">
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-6">
               {editingSchedule ? "スケジュール編集" : "新規スケジュール作成"}
             </h3>
             <ScheduleForm
@@ -180,18 +178,15 @@ export default function ScheduleSettingsTab() {
               onSubmit={handleSubmit}
               onCancel={handleCancel}
             />
-          </div>
         </div>
       ) : (
         <>
           {loading ? (
-            <div className="bg-white dark:bg-[#232b39] rounded-lg shadow p-12">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                <p className="mt-2 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+              <p className="mt-2 text-white/70">
                   読み込み中...
-                </p>
-              </div>
+              </p>
             </div>
           ) : (
             <ScheduleList
@@ -205,6 +200,6 @@ export default function ScheduleSettingsTab() {
           )}
         </>
       )}
-    </div>
+    </>
   );
 }

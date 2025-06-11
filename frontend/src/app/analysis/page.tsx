@@ -4,11 +4,13 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import PageWithBackground from "@/components/common/PageWithBackground";
+import { Card } from "@/components/common/Card";
+import { Button } from "@/components/common/Button";
 
 const earningsLinks = [
   {
     name: "TSMC",
-    url: "https://investor.tsmc.com/english/quarterly-results",
+    url: "https://investor.tsmc.com/japanese/quarterly-results",
     color: "indigo",
     description:
       "台湾積体電路製造（TSMC）は、世界最大の半導体ファウンドリです。",
@@ -16,7 +18,7 @@ const earningsLinks = [
   },
   {
     name: "UMC",
-    url: "https://www.umc.com/en/IR/financial_reports.asp",
+    url: "https://www.umc.com/en/Download/quarterly_results/QuarterlyResults",
     color: "green",
     description:
       "聯華電子（UMC）は、台湾を拠点とする大手半導体ファウンドリです。",
@@ -31,8 +33,16 @@ const earningsLinks = [
     button: "bg-blue-500 hover:bg-blue-600",
   },
   {
+    name: "SMIC",
+    url: "https://www.smics.com/jp/site/company_financialSummary#page_slide_0",
+    color: "teal",
+    description:
+      "中芯国際集成電路製造（SMIC）は、中国を拠点とする大手半導体ファウンドリです。",
+    button: "bg-teal-500 hover:bg-teal-600",
+  },
+  {
     name: "GlobalFoundries",
-    url: "https://investors.gf.com/financials/quarterly-results",
+    url: "https://investors.gf.com/financials-and-filings/quarterly-results",
     color: "red",
     description:
       "GFとしても知られるGlobalFoundriesは、米国を拠点とする大手半導体ファウンドリです。",
@@ -40,7 +50,7 @@ const earningsLinks = [
   },
   {
     name: "SK hynix",
-    url: "https://www.skhynix.com/eng/ir/financialInfo/earningsRelease.jsp",
+    url: "https://www.skhynix.com/ir/UI-FR-IR01/",
     color: "orange",
     description:
       "SKハイニックスは、韓国を拠点とする大手メモリ半導体メーカーです。",
@@ -48,7 +58,7 @@ const earningsLinks = [
   },
   {
     name: "Micron Technology",
-    url: "https://investors.micron.com/financials/quarterly-results",
+    url: "https://investors.micron.com/quarterly-results",
     color: "purple",
     description:
       "マイクロン・テクノロジーは、米国を拠点とする大手メモリおよびストレージソリューションメーカーです。",
@@ -69,35 +79,35 @@ export default function AnalysisPage() {
           主要な半導体メーカーの最新決算情報へアクセスできます。
         </p>
         <div className="mb-10 flex justify-center">
-          <button
-            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-300 shadow-lg"
+          <Button
+            variant="primary"
             onClick={() => router.push("/analysis/MapGlobe")}
+            className="shadow-lg"
           >
             拠点マップで表示
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-7xl">
           {earningsLinks.map((company) => (
-            <div
+            <Card
               key={company.name}
-              className="report-card p-6 flex flex-col bg-gray-800/75 rounded-lg shadow-lg border border-gray-700 hover:border-gray-500 transition-colors duration-300"
+              title={company.name}
+              summary={company.description}
+              variant="default"
+              colorTheme="analysis"
             >
-              <h2 className="text-2xl font-semibold mb-3 text-sky-300 text-shadow-sm">
-                {company.name}
-              </h2>
-              <p className="text-gray-300 mb-4 flex-grow">
-                {company.description}
-              </p>
-              <a
-                href={company.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`mt-auto self-start ${company.button} text-white font-semibold py-2 px-4 rounded-lg transition duration-300`}
-              >
-                決算資料ページへ
-              </a>
-            </div>
+              <div className="flex justify-start mt-4">
+                <a
+                  href={company.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${company.button} text-white font-semibold py-2 px-4 rounded-lg transition duration-300`}
+                >
+                  決算資料ページへ
+                </a>
+              </div>
+            </Card>
           ))}
         </div>
 

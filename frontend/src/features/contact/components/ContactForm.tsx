@@ -5,6 +5,7 @@ import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { useContactForm } from "../hooks/useContactForm";
 import { FormField } from "./FormField";
 import { SuccessMessage } from "./SuccessMessage";
+import { Button } from "@/components/common/Button";
 
 export const ContactForm: React.FC = () => {
   const { t } = useI18n();
@@ -97,15 +98,16 @@ export const ContactForm: React.FC = () => {
         />
 
         <div className="flex justify-center">
-          <button
+          <Button
             type="submit"
             disabled={isSubmitting}
-            className="bg-green-600 text-white py-3 px-8 rounded-md hover:bg-green-500 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-base w-full"
+            isLoading={isSubmitting}
+            variant="primary"
+            size="lg"
+            className="w-full bg-green-600 hover:bg-green-500 dark:bg-green-600 dark:hover:bg-green-500"
           >
-            {isSubmitting
-              ? t("contact.submitting") || "送信中..."
-              : t("contact.submit") || "送信する"}
-          </button>
+            {t("contact.submit") || "送信する"}
+          </Button>
         </div>
       </form>
     </div>

@@ -22,6 +22,7 @@ services:
       API_URL_INTERNAL: "http://server:4000"
       PIPELINE_URL_INTERNAL: "http://pipeline:8000"
       WATCHPACK_POLLING: "true"
+      NODE_ENV: "development"
     depends_on:
       - server
     volumes:
@@ -31,8 +32,10 @@ services:
       - ./frontend/next.config.ts:/app/next.config.ts
       - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
       - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/package.json:/app/package.json
       - /app/node_modules
       - /app/.next
+    command: npm run dev
 
   server:
     build:
@@ -43,11 +46,13 @@ services:
       - "5555:5555" # Prisma Studio
     environment:
       DATABASE_URL: "postgresql://semicon_topics:semiconpass@db:5432/semicon_topics"
-      NODE_ENV: production
+      NODE_ENV: development
     depends_on:
       - db
     volumes:
       - ./server/prisma:/app/prisma
+      - ./server/src:/app/src
+      - /app/node_modules
 
   pipeline:
     build:
@@ -72,6 +77,8 @@ services:
       - db
     env_file:
       - .env
+    volumes:
+      - ./pipeline/src:/app/src
 
 volumes:
   postgres_data:

@@ -5,7 +5,11 @@ import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { Article } from "@/types/article.d";
 import { articlesApi } from "@/lib/apiClient";
 import ArticleTable from "@/features/articles/components/ArticleTable";
-import ViewToggle from "@/features/articles/components/ViewToggle";
+import { ViewToggle } from "@/components/common";
+import Pagination from "@/components/common/Pagination";
+import ArticleSearchFilters from "@/components/common/ArticleSearchFilters";
+import type { ArticleSearchFilters as ArticleSearchFiltersType } from "@/components/common/ArticleSearchFilters";
+import { Card } from "@/components/common/Card";
 
 interface ArticleSelectionTabProps {
   selectedArticles: Article[];
@@ -24,16 +28,27 @@ export default function ArticleSelectionTab({
   const [checkedArticles, setCheckedArticles] = useState<Set<string>>(new Set());
   
   // フィルター状態
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [labelTags, setLabelTags] = useState<string[]>([]);
-  const [labelInput, setLabelInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState<ArticleSearchFiltersType>({
+    startDate: "",
+    endDate: "",
+    labelTags: [],
+    searchQuery: "",
+    sourceFilter: ""
+  });
   
   // 表示モード
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [selectedViewMode, setSelectedViewMode] = useState<"card" | "table">("card");
+  
+  // ページネーション
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12); // カード表示の場合は12件、テーブル表示の場合は10件
+  const [paginatedArticles, setPaginatedArticles] = useState<Article[]>([]);
+  
+  // 選択済み記事用の状態
+  const [selectedCurrentPage, setSelectedCurrentPage] = useState(1);
+  const [selectedSearch, setSelectedSearch] = useState("");
+  const [filteredSelectedArticles, setFilteredSelectedArticles] = useState<Article[]>([]);
 
   // 初期データ読み込み
   useEffect(() => {
@@ -43,7 +58,33 @@ export default function ArticleSelectionTab({
   // フィルター適用
   useEffect(() => {
     applyFilters();
-  }, [allArticles, startDate, endDate, labelTags, searchQuery, sourceFilter]);
+  }, [allArticles, appliedFilters]);
+
+  // ページネーション適用
+  useEffect(() => {
+    applyPagination();
+  }, [filteredArticles, currentPage, viewMode]);
+
+  // フィルター変更時はページを1にリセット
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [appliedFilters]);
+  
+  // 選択済み記事のフィルタリング
+  useEffect(() => {
+    const filtered = selectedArticles.filter(article => {
+      if (!selectedSearch) return true;
+      const searchLower = selectedSearch.toLowerCase();
+      return (
+        article.title.toLowerCase().includes(searchLower) ||
+        article.summary?.toLowerCase().includes(searchLower) ||
+        article.source?.toLowerCase().includes(searchLower) ||
+        article.labels?.some(label => label.toLowerCase().includes(searchLower))
+      );
+    });
+    setFilteredSelectedArticles(filtered);
+    setSelectedCurrentPage(1);
+  }, [selectedArticles, selectedSearch]);
 
   const loadArticles = async () => {
     try {
@@ -62,21 +103,21 @@ export default function ArticleSelectionTab({
     let filtered = [...allArticles];
 
     // 日付フィルター
-    if (startDate) {
+    if (appliedFilters.startDate) {
       filtered = filtered.filter(article => 
-        new Date(article.publishedAt) >= new Date(startDate)
+        new Date(article.publishedAt) >= new Date(appliedFilters.startDate)
       );
     }
-    if (endDate) {
+    if (appliedFilters.endDate) {
       filtered = filtered.filter(article => 
-        new Date(article.publishedAt) <= new Date(endDate)
+        new Date(article.publishedAt) <= new Date(appliedFilters.endDate + "T23:59:59")
       );
     }
 
     // ラベルフィルター（複数ラベルのAND検索）
-    if (labelTags.length > 0) {
+    if (appliedFilters.labelTags.length > 0) {
       filtered = filtered.filter(article =>
-        labelTags.every(tag =>
+        appliedFilters.labelTags.every(tag =>
           article.labels?.some(label => 
             label.toLowerCase().includes(tag.toLowerCase())
           )
@@ -85,17 +126,17 @@ export default function ArticleSelectionTab({
     }
 
     // 検索クエリ
-    if (searchQuery) {
+    if (appliedFilters.searchQuery) {
       filtered = filtered.filter(article =>
-        article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        article.summary?.toLowerCase().includes(searchQuery.toLowerCase())
+        article.title.toLowerCase().includes(appliedFilters.searchQuery.toLowerCase()) ||
+        article.summary?.toLowerCase().includes(appliedFilters.searchQuery.toLowerCase())
       );
     }
 
     // ソースフィルター
-    if (sourceFilter) {
+    if (appliedFilters.sourceFilter) {
       filtered = filtered.filter(article =>
-        article.source.toLowerCase().includes(sourceFilter.toLowerCase())
+        article.source.toLowerCase().includes(appliedFilters.sourceFilter.toLowerCase())
       );
     }
 
@@ -107,18 +148,57 @@ export default function ArticleSelectionTab({
     setFilteredArticles(filtered);
   };
 
-  const handleLabelKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && labelInput.trim()) {
-      e.preventDefault();
-      if (!labelTags.includes(labelInput.trim())) {
-        setLabelTags([...labelTags, labelInput.trim()]);
-      }
-      setLabelInput("");
+  const applyPagination = () => {
+    const itemsCount = viewMode === "table" ? 10 : itemsPerPage;
+    const totalPages = Math.ceil(filteredArticles.length / itemsCount);
+    
+    // 現在のページが総ページ数を超えている場合は最後のページに調整
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+      return;
     }
+    
+    const startIndex = (currentPage - 1) * itemsCount;
+    const endIndex = startIndex + itemsCount;
+    setPaginatedArticles(filteredArticles.slice(startIndex, endIndex));
   };
 
-  const removeLabel = (labelToRemove: string) => {
-    setLabelTags(labelTags.filter(label => label !== labelToRemove));
+  const getTotalPages = () => {
+    const itemsCount = viewMode === "table" ? 10 : itemsPerPage;
+    return Math.ceil(filteredArticles.length / itemsCount);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+  
+  // 選択済み記事用のページネーション
+  const getSelectedTotalPages = () => {
+    const itemsCount = selectedViewMode === "table" ? 10 : 12;
+    return Math.ceil(filteredSelectedArticles.length / itemsCount);
+  };
+  
+  const getSelectedPaginatedArticles = () => {
+    const itemsCount = selectedViewMode === "table" ? 10 : 12;
+    const startIndex = (selectedCurrentPage - 1) * itemsCount;
+    const endIndex = startIndex + itemsCount;
+    return filteredSelectedArticles.slice(startIndex, endIndex);
+  };
+
+  // 検索フィルターハンドラ
+  const handleFiltersSearch = (filters: ArticleSearchFiltersType) => {
+    setAppliedFilters(filters);
+  };
+
+  // フィルタークリアハンドラ
+  const handleFiltersClear = () => {
+    setAppliedFilters({
+      startDate: "",
+      endDate: "",
+      labelTags: [],
+      searchQuery: "",
+      sourceFilter: ""
+    });
   };
 
   const handleAddCheckedArticles = () => {
@@ -142,14 +222,6 @@ export default function ArticleSelectionTab({
     }
   };
 
-  const clearFilters = () => {
-    setStartDate("");
-    setEndDate("");
-    setLabelTags([]);
-    setLabelInput("");
-    setSearchQuery("");
-    setSourceFilter("");
-  };
 
   const handleCheckArticle = (articleId: string) => {
     const newChecked = new Set(checkedArticles);
@@ -162,10 +234,10 @@ export default function ArticleSelectionTab({
   };
 
   const handleCheckAll = () => {
-    if (checkedArticles.size === filteredArticles.length) {
+    if (checkedArticles.size === paginatedArticles.length) {
       setCheckedArticles(new Set());
     } else {
-      setCheckedArticles(new Set(filteredArticles.map(a => a.id)));
+      setCheckedArticles(new Set(paginatedArticles.map(a => a.id)));
     }
   };
 
@@ -180,129 +252,92 @@ export default function ArticleSelectionTab({
 
   return (
     <div className="space-y-6">
+      {/* 矢印ボタンを上部に配置 */}
+      <div className="flex justify-center">
+        <div className="flex gap-4">
+          <button
+            onClick={handleAddCheckedArticles}
+            disabled={checkedArticles.size === 0}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg shadow-lg transition-all transform hover:scale-105 disabled:hover:scale-100 flex items-center gap-2"
+            title={t("admin.topics.addSelected")}
+          >
+            <span className="text-sm font-medium">{t("admin.topics.addSelected")}</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          <button
+            onClick={handleClearSelection}
+            disabled={selectedArticles.length === 0}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg shadow-lg transition-all transform hover:scale-105 disabled:hover:scale-100 flex items-center gap-2"
+            title={t("admin.topics.clearSelection")}
+          >
+            <span className="text-sm font-medium">{t("admin.topics.clearSelection")}</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* 左側: 記事データベース */}
-        <div className="xl:col-span-5">
+        <div className="xl:col-span-6">
           <div className="bg-white dark:bg-[#2d3646] rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200">
                 {t("admin.topics.articleDatabase")}
               </h3>
-              <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              <ViewToggle viewMode={viewMode} onChange={setViewMode} />
             </div>
 
-            {/* フィルター */}
-            <div className="space-y-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t("admin.topics.startDate")}
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-[#3a4553] text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t("admin.topics.endDate")}
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-[#3a4553] text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t("admin.topics.labelFilter")}
-                </label>
-                <input
-                  type="text"
-                  value={labelInput}
-                  onChange={(e) => setLabelInput(e.target.value)}
-                  onKeyPress={handleLabelKeyPress}
-                  placeholder={t("admin.topics.labelFilterPlaceholder")}
-                  className="w-full px-3 py-2 bg-white dark:bg-[#3a4553] text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
-                />
-                {labelTags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {labelTags.map((label) => (
-                      <span
-                        key={label}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
-                      >
-                        {label}
-                        <button
-                          onClick={() => removeLabel(label)}
-                          className="ml-2 hover:text-blue-600 dark:hover:text-blue-100"
-                        >
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t("admin.topics.source")}
-                  </label>
-                  <input
-                    type="text"
-                    value={sourceFilter}
-                    onChange={(e) => setSourceFilter(e.target.value)}
-                    placeholder={t("admin.topics.sourcePlaceholder")}
-                    className="w-full px-3 py-2 bg-white dark:bg-[#3a4553] text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t("admin.topics.search")}
-                  </label>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={t("admin.topics.searchPlaceholder")}
-                    className="w-full px-3 py-2 bg-white dark:bg-[#3a4553] text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {t("admin.topics.foundArticles", { count: filteredArticles.length })}
-                </p>
-                <button
-                  onClick={clearFilters}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                >
-                  {t("admin.topics.clearFilters")}
-                </button>
-              </div>
-            </div>
-
-            {/* 全選択チェックボックス */}
-            <div className="flex items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-              <input
-                type="checkbox"
-                checked={filteredArticles.length > 0 && checkedArticles.size === filteredArticles.length}
-                onChange={handleCheckAll}
-                className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
+            {/* 記事検索フィルター */}
+            <div className="mb-6">
+              <ArticleSearchFilters
+                onSearch={handleFiltersSearch}
+                onClear={handleFiltersClear}
+                appliedFilters={appliedFilters}
               />
-              <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                {t("admin.topics.selectAll")}
-              </label>
+            </div>
+            
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t("admin.topics.foundArticles", { count: filteredArticles.length })}
+              </p>
+            </div>
+
+            {/* 上部のページネーション */}
+            {filteredArticles.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={getTotalPages()}
+                hasNextPage={currentPage < getTotalPages()}
+                hasPreviousPage={currentPage > 1}
+                onPageChange={handlePageChange}
+              />
+            )}
+
+            {/* 全選択チェックボックスとページネーション情報 */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700 mt-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={paginatedArticles.length > 0 && checkedArticles.size === paginatedArticles.length}
+                  onChange={handleCheckAll}
+                  className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  {t("admin.topics.selectAll")}
+                </label>
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {t("admin.topics.pageNavigation", { 
+                  current: currentPage, 
+                  total: getTotalPages(), 
+                  showing: paginatedArticles.length,
+                  totalCount: filteredArticles.length 
+                })}
+              </div>
             </div>
 
             {/* 記事一覧 - チェックボックス付き */}
@@ -315,89 +350,86 @@ export default function ArticleSelectionTab({
                 <p className="text-sm mt-1">{t("admin.topics.adjustFilters")}</p>
               </div>
             ) : viewMode === "card" ? (
-              <div className="grid grid-cols-1 gap-4">
-                {filteredArticles.map((article) => (
-                  <div key={article.id} className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-[#3a4553] rounded-lg hover:shadow-sm transition-shadow">
-                    <input
-                      type="checkbox"
-                      checked={checkedArticles.has(article.id)}
-                      onChange={() => handleCheckArticle(article.id)}
-                      className="mt-1 w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-200 line-clamp-2 mb-2">
-                        {article.title}
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {article.source} | {new Date(article.publishedAt).toLocaleDateString()}
-                      </p>
-                      {article.summary && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-2">
-                          {article.summary}
-                        </p>
-                      )}
-                      {article.labels && article.labels.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {article.labels.slice(0, 3).map((label, index) => (
-                            <span key={index} className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full">
-                              {label}
-                            </span>
-                          ))}
-                          {article.labels.length > 3 && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">+{article.labels.length - 3}</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {paginatedArticles.map((article) => (
+                  <Card
+                    key={article.id}
+                    variant="article"
+                    colorTheme="article"
+                    title={article.title}
+                    summary={article.summary}
+                    metadata={[
+                      { label: "", value: article.source },
+                      { label: "", value: new Date(article.publishedAt).toLocaleDateString() }
+                    ]}
+                    labels={article.labels || []}
+                    imageUrl={article.thumbnailUrl || ""}
+                    imageAlt={article.title}
+                    showCheckbox={true}
+                    isSelected={checkedArticles.has(article.id)}
+                    onSelect={() => handleCheckArticle(article.id)}
+                    actions={[
+                      {
+                        label: t("articles.originalArticle"),
+                        href: article.articleUrl
+                      }
+                    ]}
+                  />
                 ))}
               </div>
             ) : (
               <div>
                 <ArticleTable 
-                  articles={filteredArticles}
+                  articles={paginatedArticles}
                   showCheckbox={true}
                   checkedArticles={checkedArticles}
                   onCheckArticle={handleCheckArticle}
                 />
               </div>
             )}
+
+            {/* 下部のページネーション */}
+            {filteredArticles.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={getTotalPages()}
+                hasNextPage={currentPage < getTotalPages()}
+                hasPreviousPage={currentPage > 1}
+                onPageChange={handlePageChange}
+              />
+            )}
           </div>
         </div>
 
-        {/* 中央: 移動ボタン */}
-        <div className="xl:col-span-2 flex xl:flex-col justify-center items-center gap-4 my-8 xl:my-0">
-          <button
-            onClick={handleAddCheckedArticles}
-            disabled={checkedArticles.size === 0}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-4 rounded-full shadow-lg transition-all transform hover:scale-110 disabled:hover:scale-100"
-            title={t("admin.topics.addSelected")}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-          <button
-            onClick={handleClearSelection}
-            disabled={selectedArticles.length === 0}
-            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-4 rounded-full shadow-lg transition-all transform hover:scale-110 disabled:hover:scale-100"
-            title={t("admin.topics.clearSelection")}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
         {/* 右側: 選択済み記事リスト */}
-        <div className="xl:col-span-5">
+        <div className="xl:col-span-6">
           <div className="bg-white dark:bg-[#2d3646] rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200">
                 {t("admin.topics.selectedArticles", { count: selectedArticles.length })}
               </h3>
-              <ViewToggle viewMode={selectedViewMode} onViewModeChange={setSelectedViewMode} />
+              <ViewToggle viewMode={selectedViewMode} onChange={setSelectedViewMode} />
             </div>
+            
+            {/* 検索バー */}
+            {selectedArticles.length > 0 && (
+              <div className="mb-4">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    value={selectedSearch}
+                    onChange={(e) => setSelectedSearch(e.target.value)}
+                    placeholder={t("common.searchPlaceholder")}
+                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            )}
 
             {selectedArticles.length === 0 ? (
               <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -408,57 +440,75 @@ export default function ArticleSelectionTab({
                 <p className="text-sm mt-1">{t("admin.topics.selectArticlesHint")}</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {selectedViewMode === "card" ? (
-                  selectedArticles.map((article) => (
-                    <div key={article.id} className="bg-gray-50 dark:bg-[#3a4553] rounded-lg p-4 hover:shadow-sm transition-shadow">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1 min-w-0 mr-4">
-                          <h4 className="font-medium text-gray-900 dark:text-gray-200 line-clamp-2">{article.title}</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {article.source} | {new Date(article.publishedAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveArticle(article.id)}
-                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1"
-                          title={t("admin.topics.removeArticle")}
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
+              <>
+                {/* ページネーション情報 */}
+                {filteredSelectedArticles.length > 0 && (
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {t("admin.topics.searchResultCount", { count: filteredSelectedArticles.length })}
                     </div>
-                  ))
-                ) : (
-                  <table className="w-full">
-                    <tbody>
-                      {selectedArticles.map((article) => (
-                        <tr key={article.id} className="border-b border-gray-200 dark:border-gray-700">
-                          <td className="py-3">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-200 line-clamp-1">{article.title}</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                              {article.source} | {new Date(article.publishedAt).toLocaleDateString()}
-                            </p>
-                          </td>
-                          <td className="py-3 text-right">
-                            <button
-                              onClick={() => handleRemoveArticle(article.id)}
-                              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1"
-                              title={t("admin.topics.removeArticle")}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {t("admin.topics.pageNavigation", { 
+                        current: selectedCurrentPage, 
+                        total: getSelectedTotalPages(), 
+                        showing: getSelectedPaginatedArticles().length,
+                        totalCount: filteredSelectedArticles.length 
+                      })}
+                    </div>
+                  </div>
                 )}
-              </div>
+                
+                <div className="space-y-3">
+                  {selectedViewMode === "card" ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {getSelectedPaginatedArticles().map((article) => (
+                        <Card
+                          key={article.id}
+                          variant="article"
+                          colorTheme="article"
+                          title={article.title}
+                          summary={article.summary}
+                          metadata={[
+                            { label: "", value: article.source },
+                            { label: "", value: new Date(article.publishedAt).toLocaleDateString() }
+                          ]}
+                          labels={article.labels || []}
+                          imageUrl={article.thumbnailUrl || ""}
+                          imageAlt={article.title}
+                          onDelete={() => handleRemoveArticle(article.id)}
+                          actions={[
+                            {
+                              label: t("articles.originalArticle"),
+                              href: article.articleUrl
+                            }
+                          ]}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div>
+                      <ArticleTable 
+                        articles={getSelectedPaginatedArticles()}
+                        showCheckbox={false}
+                        onDelete={(articleId) => handleRemoveArticle(articleId)}
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                {/* ページネーション */}
+                {filteredSelectedArticles.length > 0 && getSelectedTotalPages() > 1 && (
+                  <div className="mt-4">
+                    <Pagination
+                      currentPage={selectedCurrentPage}
+                      totalPages={getSelectedTotalPages()}
+                      hasNextPage={selectedCurrentPage < getSelectedTotalPages()}
+                      hasPreviousPage={selectedCurrentPage > 1}
+                      onPageChange={setSelectedCurrentPage}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

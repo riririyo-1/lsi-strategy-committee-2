@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/features/i18n/hooks/useI18n";
+import { Button } from "@/components/common/Button";
 
 const WelcomeSection = () => {
   const { t } = useI18n();
@@ -16,9 +17,13 @@ const WelcomeSection = () => {
       <p className="text-lg md:text-xl mb-8 text-gray-700 dark:text-gray-200 text-shadow-sm">
         {t("home.welcome.description")}
       </p>
-      <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg">
+      <Button
+        variant="primary"
+        size="lg"
+        className="transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+      >
         {t("home.welcome.button")}
-      </button>
+      </Button>
     </section>
   );
 };

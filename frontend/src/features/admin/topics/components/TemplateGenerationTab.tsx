@@ -3,20 +3,23 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { Article } from "@/types/article.d";
-import { pipelineTopicsApi } from "@/lib/apiClient";
+import { topicsApi } from "@/lib/apiClient";
+import { Button } from "@/components/common/Button";
 
 interface TemplateGenerationTabProps {
   selectedArticles: Article[];
   monthlySummary: string;
   onMonthlySummaryChange: (summary: string) => void;
+  onArticlesWithCategoriesChange?: (articles: ArticleWithCategory[]) => void;
+  topicId?: string;
 }
 
-interface ArticleWithCategory extends Article {
+export interface ArticleWithCategory extends Article {
   mainCategory?: string;
   subCategory?: string;
 }
 
-// PEST分析に基づいたカテゴリ定義
+// カテゴリ定義（DB設計書に基づく）
 const MAIN_CATEGORIES = [
   { id: "political", name: "Political", nameJa: "政治・政策" },
   { id: "economical", name: "Economical", nameJa: "経済・市場" },
@@ -41,53 +44,101 @@ export default function TemplateGenerationTab({
   selectedArticles,
   monthlySummary,
   onMonthlySummaryChange,
+  onArticlesWithCategoriesChange,
+  topicId,
 }: TemplateGenerationTabProps) {
   const { t, locale } = useI18n();
   const isJa = locale === "ja";
   
+  // 記事とカテゴリの状態を管理
   const [articlesWithCategories, setArticlesWithCategories] = useState<ArticleWithCategory[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isAutoCategorizingAll, setIsAutoCategorizingAll] = useState(false);
+  const [isCategorizingArticle, setIsCategorizingArticle] = useState<string | null>(null);
+  const [isCategorizingAll, setIsCategorizingAll] = useState(false);
 
-  // 選択された記事が変更されたときにカテゴリ情報を更新
+  // 選択された記事が変更されたときに記事一覧を初期化
   useEffect(() => {
-    updateArticlesWithCategories();
+    const initialArticles = selectedArticles.map(article => ({
+      ...article,
+      mainCategory: undefined,
+      subCategory: undefined,
+    }));
+    setArticlesWithCategories(initialArticles);
   }, [selectedArticles]);
 
-  const updateArticlesWithCategories = () => {
-    const updatedArticles = selectedArticles.map(article => {
-      const existing = articlesWithCategories.find(a => a.id === article.id);
-      return {
-        ...article,
-        mainCategory: existing?.mainCategory,
-        subCategory: existing?.subCategory,
-      };
-    });
-    setArticlesWithCategories(updatedArticles);
+  // カテゴリ情報が更新されたときに親コンポーネントに通知
+  useEffect(() => {
+    if (onArticlesWithCategoriesChange) {
+      onArticlesWithCategoriesChange(articlesWithCategories);
+    }
+  }, [articlesWithCategories, onArticlesWithCategoriesChange]);
+
+  // カテゴリ名からIDへのマッピング
+  const mapCategoryNameToId = (categoryName: string): string | undefined => {
+    // メインカテゴリから検索
+    const mainCat = MAIN_CATEGORIES.find(cat => 
+      cat.name === categoryName || cat.nameJa === categoryName
+    );
+    if (mainCat) return mainCat.id;
+    
+    // サブカテゴリから検索
+    const subCat = SUB_CATEGORIES.find(cat => 
+      cat.name === categoryName || cat.nameJa === categoryName
+    );
+    if (subCat) return subCat.id;
+    
+    console.warn(`Unknown category: ${categoryName}`);
+    return undefined;
   };
 
-  const handleMainCategoryChange = (articleId: string, categoryId: string) => {
+  // 手動でカテゴリを変更
+  const handleCategoryChange = async (articleId: string, categoryType: 'main' | 'sub', categoryId: string) => {
+    // UIを即座に更新
     setArticlesWithCategories(prev =>
       prev.map(article =>
         article.id === articleId
-          ? { ...article, mainCategory: categoryId || undefined }
+          ? {
+              ...article,
+              [categoryType === 'main' ? 'mainCategory' : 'subCategory']: categoryId || undefined
+            }
           : article
       )
     );
+
+    // APIを呼び出してサーバーに保存
+    if (topicId) {
+      try {
+        const article = articlesWithCategories.find(a => a.id === articleId);
+        if (article) {
+          const updateData = {
+            main: categoryType === 'main' ? categoryId : article.mainCategory,
+            sub: categoryType === 'sub' ? [categoryId] : (article.subCategory ? [article.subCategory] : [])
+          };
+
+          await topicsApi.updateArticleCategory(topicId, articleId, updateData);
+          console.log(`Category updated for article ${articleId}:`, updateData);
+        }
+      } catch (error) {
+        console.error("Failed to update article category:", error);
+        // エラーが発生した場合はUIを元に戻す
+        setArticlesWithCategories(prev =>
+          prev.map(article =>
+            article.id === articleId
+              ? {
+                  ...article,
+                  [categoryType === 'main' ? 'mainCategory' : 'subCategory']: undefined
+                }
+              : article
+          )
+        );
+        alert("カテゴリの更新に失敗しました");
+      }
+    }
   };
 
-  const handleSubCategoryChange = (articleId: string, subCategoryId: string) => {
-    setArticlesWithCategories(prev =>
-      prev.map(article =>
-        article.id === articleId
-          ? { ...article, subCategory: subCategoryId || undefined }
-          : article
-      )
-    );
-  };
-
+  // 月次サマリ生成
   const generateMonthlySummary = async () => {
-    if (selectedArticles.length === 0) {
+    if (!topicId || selectedArticles.length === 0) {
       alert(t("admin.topics.selectArticlesFirst"));
       return;
     }
@@ -95,15 +146,14 @@ export default function TemplateGenerationTab({
     try {
       setIsGenerating(true);
       
-      // Pipeline API を使用してAI生成
-      const response = await pipelineTopicsApi.generate({
+      const response = await topicsApi.generateSummary(topicId, {
         article_ids: selectedArticles.map(a => a.id),
-        template_type: "monthly_summary"
+        summary_style: "overview"
       });
 
-      const generatedSummary = response.data.summary || response.data.content || "";
-      onMonthlySummaryChange(generatedSummary);
-      
+      if (response.data.summary) {
+        onMonthlySummaryChange(response.data.summary);
+      }
     } catch (error) {
       console.error("Failed to generate monthly summary:", error);
       alert(t("admin.topics.summaryGenerationError"));
@@ -112,61 +162,87 @@ export default function TemplateGenerationTab({
     }
   };
 
-  const autoCategorizeSingleArticle = async (articleId: string) => {
-    try {
-      const article = articlesWithCategories.find(a => a.id === articleId);
-      if (!article) return;
+  // 単一記事の自動カテゴリ分類
+  const categorizeSingleArticle = async (articleId: string) => {
+    if (!topicId) {
+      alert("Topic IDが必要です");
+      return;
+    }
 
-      // AI分析に基づいてカテゴリを推定（実際の実装では記事内容を分析）
-      // 今回はダミー実装
-      const suggestedMain = MAIN_CATEGORIES[Math.floor(Math.random() * MAIN_CATEGORIES.length)];
-      const suggestedSub = SUB_CATEGORIES[Math.floor(Math.random() * SUB_CATEGORIES.length)];
+    try {
+      setIsCategorizingArticle(articleId);
       
-      setArticlesWithCategories(prev =>
-        prev.map(a =>
-          a.id === articleId
-            ? { ...a, mainCategory: suggestedMain.id, subCategory: suggestedSub.id }
-            : a
-        )
-      );
-      
+      const response = await topicsApi.categorize(topicId, {
+        article_ids: [articleId]
+      });
+
+      if (response.data.success && response.data.results) {
+        const result = response.data.results.find((r: any) => r.article_id === articleId);
+        
+        if (result) {
+          const mainCategoryId = result.main ? mapCategoryNameToId(result.main) : undefined;
+          const subCategoryId = result.sub && Array.isArray(result.sub) && result.sub.length > 0
+            ? mapCategoryNameToId(result.sub[0])
+            : undefined;
+          
+          setArticlesWithCategories(prev =>
+            prev.map(article =>
+              article.id === articleId
+                ? { ...article, mainCategory: mainCategoryId, subCategory: subCategoryId }
+                : article
+            )
+          );
+        }
+      }
     } catch (error) {
-      console.error("Failed to auto-categorize article:", error);
-      alert(t("admin.topics.autoCategorizeError"));
+      console.error("Failed to categorize article:", error);
+      alert("カテゴリ分類に失敗しました");
+    } finally {
+      setIsCategorizingArticle(null);
     }
   };
 
-  const autoCategorizeAllArticles = async () => {
-    if (selectedArticles.length === 0) {
+  // 全記事の一括自動カテゴリ分類
+  const categorizeAllArticles = async () => {
+    if (!topicId || selectedArticles.length === 0) {
       alert(t("admin.topics.selectArticlesFirst"));
       return;
     }
 
     try {
-      setIsAutoCategorizingAll(true);
+      setIsCategorizingAll(true);
       
-      // Pipeline API を使用してすべての記事を一括カテゴリ分類
-      // 実際の実装では、記事の内容に基づいて最適なカテゴリを提案する
-      const updatedArticles = articlesWithCategories.map(article => {
-        const suggestedMain = MAIN_CATEGORIES[Math.floor(Math.random() * MAIN_CATEGORIES.length)];
-        const suggestedSub = SUB_CATEGORIES[Math.floor(Math.random() * SUB_CATEGORIES.length)];
-        return {
-          ...article,
-          mainCategory: suggestedMain.id,
-          subCategory: suggestedSub.id,
-        };
+      const response = await topicsApi.categorize(topicId, {
+        article_ids: selectedArticles.map(a => a.id)
       });
-      
-      setArticlesWithCategories(updatedArticles);
-      
+
+      if (response.data.success && response.data.results) {
+        const updatedArticles = articlesWithCategories.map(article => {
+          const result = response.data.results.find((r: any) => r.article_id === article.id);
+          
+          if (result) {
+            const mainCategoryId = result.main ? mapCategoryNameToId(result.main) : undefined;
+            const subCategoryId = result.sub && Array.isArray(result.sub) && result.sub.length > 0
+              ? mapCategoryNameToId(result.sub[0])
+              : undefined;
+            
+            return { ...article, mainCategory: mainCategoryId, subCategory: subCategoryId };
+          }
+          
+          return article;
+        });
+        
+        setArticlesWithCategories(updatedArticles);
+      }
     } catch (error) {
-      console.error("Failed to auto-categorize all articles:", error);
-      alert(t("admin.topics.batchCategorizeError"));
+      console.error("Failed to categorize all articles:", error);
+      alert("一括カテゴリ分類に失敗しました");
     } finally {
-      setIsAutoCategorizingAll(false);
+      setIsCategorizingAll(false);
     }
   };
 
+  // カテゴリ別に記事をグループ化
   const getArticlesByCategory = () => {
     const categorized: { [key: string]: ArticleWithCategory[] } = {};
     const uncategorized: ArticleWithCategory[] = [];
@@ -185,7 +261,7 @@ export default function TemplateGenerationTab({
     return { categorized, uncategorized };
   };
 
-  const { categorized, uncategorized } = getArticlesByCategory();
+  // const { categorized, uncategorized } = getArticlesByCategory();
 
   return (
     <div className="space-y-6">
@@ -195,28 +271,15 @@ export default function TemplateGenerationTab({
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200">
             {t("admin.topics.monthlySummary")}
           </h3>
-          <button
+          <Button
             onClick={generateMonthlySummary}
-            disabled={isGenerating || selectedArticles.length === 0}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md"
+            disabled={isGenerating || selectedArticles.length === 0 || !topicId}
+            variant="primary"
+            isLoading={isGenerating}
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm hover:shadow-md"
           >
-            {isGenerating ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {t("admin.topics.generating")}
-              </span>
-            ) : (
-              <span className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                {t("admin.topics.aiGenerate")}
-              </span>
-            )}
-          </button>
+            {t("admin.topics.aiGenerate")}
+          </Button>
         </div>
         
         <textarea
@@ -225,104 +288,43 @@ export default function TemplateGenerationTab({
           placeholder={t("admin.topics.monthlySummaryPlaceholder")}
           className="w-full h-40 px-4 py-3 bg-gray-50 dark:bg-[#3a4553] text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-vertical transition-colors"
         />
-        
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-          {t("admin.topics.monthlySummaryHint")}
-        </p>
       </div>
 
       {/* 記事カテゴリ設定セクション */}
       <div className="bg-white dark:bg-[#2d3646] rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200">
-            {t("admin.topics.articleCategorySetting", { count: articlesWithCategories.length })}
+            {t("admin.topics.articleCategorySetting", { count: selectedArticles.length })}
           </h3>
-          <button
-            onClick={autoCategorizeAllArticles}
-            disabled={isAutoCategorizingAll || selectedArticles.length === 0}
-            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md"
+          <Button
+            onClick={categorizeAllArticles}
+            disabled={isCategorizingAll || selectedArticles.length === 0 || !topicId}
+            variant="primary"
+            isLoading={isCategorizingAll}
+            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-sm hover:shadow-md"
           >
-            {isAutoCategorizingAll ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {t("admin.topics.categorizing")}
-              </span>
-            ) : (
-              <span className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                {t("admin.topics.batchAutoCategories")}
-              </span>
-            )}
-          </button>
+            {isCategorizingAll ? t("admin.topics.categorizing") : t("admin.topics.batchAutoCategories")}
+          </Button>
         </div>
 
         {selectedArticles.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-            <p className="mt-2">{t("admin.topics.selectArticlesFirst")}</p>
-            <p className="text-sm mt-1">{t("admin.topics.selectArticlesHint")}</p>
+            <p>{t("admin.topics.selectArticlesFirst")}</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* カテゴリ別表示 */}
-            {MAIN_CATEGORIES.map(mainCategory => {
-              const categoryArticles = categorized[mainCategory.id] || [];
-              if (categoryArticles.length === 0) return null;
-
-              return (
-                <div key={mainCategory.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                  <h4 className="text-md font-semibold text-gray-900 dark:text-gray-200 mb-3">
-                    {isJa ? mainCategory.nameJa : mainCategory.name} ({categoryArticles.length})
-                  </h4>
-                  
-                  <div className="space-y-3">
-                    {categoryArticles.map(article => (
-                      <ArticleCategoryCard
-                        key={article.id}
-                        article={article}
-                        mainCategories={MAIN_CATEGORIES}
-                        subCategories={SUB_CATEGORIES}
-                        onMainCategoryChange={handleMainCategoryChange}
-                        onSubCategoryChange={handleSubCategoryChange}
-                        onAutoCategorize={() => autoCategorizeSingleArticle(article.id)}
-                        locale={locale}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* 未分類記事 */}
-            {uncategorized.length > 0 && (
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <h4 className="text-md font-semibold text-gray-900 dark:text-gray-200 mb-3">
-                  {t("admin.topics.uncategorized")} ({uncategorized.length})
-                </h4>
-                
-                <div className="space-y-3">
-                  {uncategorized.map(article => (
-                    <ArticleCategoryCard
-                      key={article.id}
-                      article={article}
-                      mainCategories={MAIN_CATEGORIES}
-                      subCategories={SUB_CATEGORIES}
-                      onMainCategoryChange={handleMainCategoryChange}
-                      onSubCategoryChange={handleSubCategoryChange}
-                      onAutoCategori ze={() => autoCategorizeSingleArticle(article.id)}
-                      locale={locale}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="space-y-4">
+            {articlesWithCategories.map(article => (
+              <ArticleCategoryCard
+                key={article.id}
+                article={article}
+                mainCategories={MAIN_CATEGORIES}
+                subCategories={SUB_CATEGORIES}
+                onCategoryChange={handleCategoryChange}
+                onAutoCategorize={() => categorizeSingleArticle(article.id)}
+                isCategorizing={isCategorizingArticle === article.id}
+                locale={locale}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -335,17 +337,17 @@ function ArticleCategoryCard({
   article,
   mainCategories,
   subCategories,
-  onMainCategoryChange,
-  onSubCategoryChange,
+  onCategoryChange,
   onAutoCategorize,
+  isCategorizing,
   locale
 }: {
   article: ArticleWithCategory;
   mainCategories: typeof MAIN_CATEGORIES;
   subCategories: typeof SUB_CATEGORIES;
-  onMainCategoryChange: (articleId: string, categoryId: string) => void;
-  onSubCategoryChange: (articleId: string, subCategoryId: string) => void;
+  onCategoryChange: (articleId: string, categoryType: 'main' | 'sub', categoryId: string) => void;
   onAutoCategorize: () => void;
+  isCategorizing: boolean;
   locale: string;
 }) {
   const { t } = useI18n();
@@ -359,24 +361,32 @@ function ArticleCategoryCard({
         </h5>
         <button
           onClick={onAutoCategorize}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap"
+          disabled={isCategorizing}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0"
         >
-          {t("admin.topics.autoCategorize")}
+          {isCategorizing ? t("admin.topics.categorizing") : t("admin.topics.autoCategorize")}
         </button>
       </div>
       
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-        {article.source} | {new Date(article.publishedAt).toLocaleDateString()}
-      </p>
+      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 space-y-1">
+        <p>{article.source}</p>
+        <p>{new Date(article.publishedAt).toLocaleDateString()}</p>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
+      {article.summary && (
+        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 line-clamp-2">
+          {article.summary}
+        </p>
+      )}
+      
+      <div className="flex gap-3 items-end">
+        <div className="flex-1 max-w-xs">
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
             {t("admin.topics.mainCategory")}
           </label>
           <select
             value={article.mainCategory || ""}
-            onChange={(e) => onMainCategoryChange(article.id, e.target.value)}
+            onChange={(e) => onCategoryChange(article.id, 'main', e.target.value)}
             className="w-full px-3 py-2 bg-white dark:bg-[#4a5568] text-gray-900 dark:text-gray-200 rounded-md border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-sm transition-colors"
           >
             <option value="">{t("admin.topics.selectCategory")}</option>
@@ -388,13 +398,13 @@ function ArticleCategoryCard({
           </select>
         </div>
         
-        <div>
+        <div className="flex-1 max-w-xs">
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
             {t("admin.topics.subCategory")}
           </label>
           <select
             value={article.subCategory || ""}
-            onChange={(e) => onSubCategoryChange(article.id, e.target.value)}
+            onChange={(e) => onCategoryChange(article.id, 'sub', e.target.value)}
             className="w-full px-3 py-2 bg-white dark:bg-[#4a5568] text-gray-900 dark:text-gray-200 rounded-md border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-sm transition-colors"
           >
             <option value="">{t("admin.topics.selectSubCategory")}</option>

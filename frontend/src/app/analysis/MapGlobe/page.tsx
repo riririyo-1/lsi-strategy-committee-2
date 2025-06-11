@@ -120,7 +120,7 @@ export default function MapGlobe() {
             color: 0x8b5cf6,
             description:
               "台湾積体電路製造（TSMC）は、世界最大の半導体ファウンドリです。",
-            link: "https://investor.tsmc.com/english/quarterly-results",
+            link: "https://investor.tsmc.com/japanese/quarterly-results",
           },
           {
             name: "UMC",
@@ -129,7 +129,7 @@ export default function MapGlobe() {
             color: 0x10b981,
             description:
               "聯華電子（UMC）は、台湾を拠点とする大手半導体ファウンドリです。",
-            link: "https://www.umc.com/en/IR/financial_reports.asp",
+            link: "https://www.umc.com/en/Download/quarterly_results/QuarterlyResults",
           },
           {
             name: "Samsung Electronics",
@@ -141,13 +141,22 @@ export default function MapGlobe() {
             link: "https://www.samsung.com/global/ir/financial-information/earnings-release/",
           },
           {
+            name: "SMIC",
+            lat: 31.2,
+            lon: 121.5,
+            color: 0x14b8a6,
+            description:
+              "中芯国際集成電路製造（SMIC）は、中国を拠点とする大手半導体ファウンドリです。",
+            link: "https://www.smics.com/jp/site/company_financialSummary#page_slide_0",
+          },
+          {
             name: "GlobalFoundries",
             lat: 42.99,
             lon: -73.78,
             color: 0xef4444,
             description:
               "GFとしても知られるGlobalFoundriesは、米国を拠点とする大手半導体ファウンドリです。",
-            link: "https://investors.gf.com/financials/quarterly-results",
+            link: "https://investors.gf.com/financials-and-filings/quarterly-results",
           },
           {
             name: "SK hynix",
@@ -156,7 +165,7 @@ export default function MapGlobe() {
             color: 0xf97316,
             description:
               "SKハイニックスは、韓国を拠点とする大手メモリ半導体メーカーです。",
-            link: "https://www.skhynix.com/eng/ir/financialInfo/earningsRelease.jsp",
+            link: "https://www.skhynix.com/ir/UI-FR-IR01/",
           },
           {
             name: "Micron Technology",
@@ -165,7 +174,7 @@ export default function MapGlobe() {
             color: 0xa855f7,
             description:
               "マイクロン・テクノロジーは、米国を拠点とする大手メモリおよびストレージソリューションメーカーです。",
-            link: "https://investors.micron.com/financials/quarterly-results",
+            link: "https://investors.micron.com/quarterly-results",
           },
         ];
 

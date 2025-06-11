@@ -19,9 +19,8 @@ export default function Pagination({
 }: PaginationProps) {
   const { t } = useI18n();
 
-  // ページ番号の配列を生成（現在のページ周辺のみ表示）
   const getPageNumbers = () => {
-    const delta = 2; // 現在のページの前後に表示するページ数
+    const delta = 2;
     const range = [];
     const rangeWithDots = [];
 
@@ -53,8 +52,7 @@ export default function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-center space-x-2 mt-8">
-      {/* 前のページボタン */}
+    <div className="flex items-center justify-center space-x-2 my-6">
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={!hasPreviousPage}
@@ -67,7 +65,6 @@ export default function Pagination({
         ← 前へ
       </button>
 
-      {/* ページ番号 */}
       <div className="flex space-x-1">
         {getPageNumbers().map((page, index) => (
           <button
@@ -87,7 +84,6 @@ export default function Pagination({
         ))}
       </div>
 
-      {/* 次のページボタン */}
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={!hasNextPage}

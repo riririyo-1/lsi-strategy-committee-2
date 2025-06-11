@@ -12,13 +12,19 @@ export interface Topic {
 
 export interface CreateTopicDto {
   title: string;
-  articles?: any[];
+  summary?: string;
+  publishDate?: string;
+  content?: string;
+  articles?: string[];
   categories?: { [articleId: string]: { main: string; sub: string[] } };
 }
 
 export interface UpdateTopicDto {
   title?: string;
-  articles?: any[];
+  summary?: string;
+  publishDate?: string;
+  content?: string;
+  articles?: string[];
   categories?: { [articleId: string]: { main: string; sub: string[] } };
 }
 
@@ -28,7 +34,7 @@ export interface UpdateArticleCategoryDto {
 }
 
 export interface CategorizeDto {
-  article_ids: number[];
+  article_ids: string[];
 }
 
 export interface ExportResult {

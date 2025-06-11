@@ -34,14 +34,15 @@ model Article {
 }
 
 model Category {
-  id                String            @id @default(uuid())
-  name              String            @unique
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id                      String            @id @default(uuid())
+  name                    String            @unique
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
   
   // リレーション
-  topicsArticles    TopicsArticle[]
-  researchArticles  ResearchArticle[]
+  topicsArticles          TopicsArticle[]   @relation("MainCategory")
+  topicsArticlesSubcat    TopicsArticle[]   @relation("SubCategory")
+  researchArticles        ResearchArticle[]
 }
 
 model Topic {
@@ -59,16 +60,18 @@ model Topic {
 }
 
 model TopicsArticle {
-  id         String   @id @default(uuid())
-  topicId    String
-  articleId  String
-  categoryId String?
-  createdAt  DateTime @default(now())
+  id            String   @id @default(uuid())
+  topicId       String
+  articleId     String
+  categoryId    String?
+  subCategoryId String?
+  createdAt     DateTime @default(now())
   
   // リレーション
-  topic      Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  article    Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  category   Category? @relation(fields: [categoryId], references: [id])
+  topic       Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  article     Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  category    Category? @relation("MainCategory", fields: [categoryId], references: [id])
+  subCategory Category? @relation("SubCategory", fields: [subCategoryId], references: [id])
   
   @@unique([topicId, articleId])
 }

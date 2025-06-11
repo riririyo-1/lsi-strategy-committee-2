@@ -1,20 +1,18 @@
+import { PaginatedResponse } from "@/types/common";
+import { Article } from "@/types/article";
+
 // ページネーション付き記事取得ユースケース
-export interface PaginationParams {
+export interface ArticlePaginationParams {
   page: number;
   limit: number;
 }
 
-export interface PaginatedArticlesResponse {
-  articles: any[];
-  totalCount: number;
-  totalPages: number;
-  currentPage: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
+export type PaginatedArticlesResponse = PaginatedResponse<Article> & {
+  articles: Article[]; // 互換性のためにarticlesフィールドを保持
+};
 
 export class GetArticlesWithPaginationUseCase {
-  async execute(params: PaginationParams): Promise<PaginatedArticlesResponse> {
+  async execute(params: ArticlePaginationParams): Promise<PaginatedArticlesResponse> {
     const searchParams = new URLSearchParams({
       page: params.page.toString(),
       limit: params.limit.toString(),
@@ -43,7 +41,8 @@ export class GetArticlesWithPaginationUseCase {
     
     // ページネーション対応形式
     return {
-      articles: data.articles || [],
+      items: data.articles || [],
+      articles: data.articles || [], // 互換性のため
       totalCount: data.totalCount || 0,
       totalPages: data.totalPages || 1,
       currentPage: data.currentPage || 1,

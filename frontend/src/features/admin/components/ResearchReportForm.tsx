@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { TrendReport } from "@/types/trendReport";
-import FileUploader from "./FileUploader";
+import { FileUploader, DatePicker, Button } from "@/components/common";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 
 interface ResearchReportFormProps {
@@ -153,6 +153,18 @@ const ResearchReportForm: React.FC<ResearchReportFormProps> = ({
 
         <div className="mb-5">
           <label className="block text-gray-300 mb-1">
+            {t("research.publishDate").replace(" {date}", "")}
+          </label>
+          <DatePicker
+            selected={formData.publishDate ? new Date(formData.publishDate) : undefined}
+            onSelect={(date) => setFormData({ ...formData, publishDate: date.toISOString().split("T")[0] })}
+            placeholder="日付を選択"
+            className="w-full"
+          />
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-gray-300 mb-1">
             {t("admin.research.speakerLabel")}
           </label>
           <input
@@ -243,38 +255,24 @@ const ResearchReportForm: React.FC<ResearchReportFormProps> = ({
           />
         </div>
 
-        <div className="mb-5">
-          <label className="block text-gray-300 mb-1">
-            {t("research.publishDate").replace(" {date}", "")}
-          </label>
-          <input
-            type="date"
-            name="publishDate"
-            value={formData.publishDate}
-            onChange={handleChange}
-            required
-            className="w-full bg-[#2d3646] text-gray-200 rounded px-4 py-3 outline-none"
-          />
-        </div>
-
         <div className="flex justify-end gap-3 mt-8">
-          <button
+          <Button
             type="button"
             onClick={onCancel}
-            className="bg-gray-500 hover:bg-gray-400 text-white px-6 py-2 rounded transition"
+            variant="secondary"
             disabled={isSubmitting}
           >
             {t("admin.research.cancel")}
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded transition"
+            variant="primary"
             disabled={isSubmitting}
+            isLoading={isSubmitting}
+            className="bg-green-500 hover:bg-green-600 dark:bg-green-500 dark:hover:bg-green-600"
           >
-            {isSubmitting
-              ? t("admin.research.saving")
-              : t("admin.research.save")}
-          </button>
+            {t("admin.research.save")}
+          </Button>
         </div>
       </form>
     </div>

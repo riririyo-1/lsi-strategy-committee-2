@@ -11,14 +11,14 @@ export default function ViewToggle({ viewMode, onChange }: ViewToggleProps) {
   const { t } = useI18n();
 
   return (
-    <div className="flex items-center space-x-2 bg-[#1d2433] rounded-lg p-1">
+    <div className="flex items-center space-x-2 bg-gray-100 dark:bg-[#1d2433] rounded-lg p-1">
       <button
         onClick={() => onChange("table")}
         title={t("articles.tableView")}
         className={`p-2 rounded-md flex items-center justify-center transition-all ${
           viewMode === "table"
-            ? "bg-blue-600/80 text-white shadow-md"
-            : "text-gray-400 hover:text-gray-200 hover:bg-[#343e50]/50"
+            ? "bg-blue-600 text-white shadow-md"
+            : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#343e50]/50"
         }`}
         aria-label={t("articles.tableView")}
       >
@@ -43,8 +43,8 @@ export default function ViewToggle({ viewMode, onChange }: ViewToggleProps) {
         title={t("articles.cardView")}
         className={`p-2 rounded-md flex items-center justify-center transition-all ${
           viewMode === "card"
-            ? "bg-blue-600/80 text-white shadow-md"
-            : "text-gray-400 hover:text-gray-200 hover:bg-[#343e50]/50"
+            ? "bg-blue-600 text-white shadow-md"
+            : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#343e50]/50"
         }`}
         aria-label={t("articles.cardView")}
       >

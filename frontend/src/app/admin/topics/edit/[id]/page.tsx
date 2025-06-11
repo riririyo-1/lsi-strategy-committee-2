@@ -1,11 +1,17 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { use } from "react";
 import TopicsEditorClient from "@/features/admin/topics/components/TopicsEditorClient";
 
-export default function TopicsEditPage() {
-  const params = useParams();
-  const topicId = params.id as string;
+interface TopicsEditPageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function TopicsEditPage({ params }: TopicsEditPageProps) {
+  const resolvedParams = use(params);
+  const topicId = resolvedParams.id;
 
   return <TopicsEditorClient mode="edit" topicId={topicId} />;
 }

@@ -10,13 +10,15 @@ interface ArticleTableProps {
   showCheckbox?: boolean;
   checkedArticles?: Set<string>;
   onCheckArticle?: (articleId: string) => void;
+  onDelete?: (articleId: string) => void;
 }
 
 export default function ArticleTable({ 
   articles, 
   showCheckbox = false,
   checkedArticles = new Set(),
-  onCheckArticle 
+  onCheckArticle,
+  onDelete
 }: ArticleTableProps) {
   const { t } = useI18n();
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -107,7 +109,7 @@ export default function ArticleTable({
 
   return (
     <div className="overflow-x-auto rounded-lg shadow">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto" style={{ tableLayout: 'auto' }}>
         <thead className="bg-gray-100 dark:bg-[#1d2433]">
           <tr>
             {showCheckbox && (
@@ -116,10 +118,18 @@ export default function ArticleTable({
                   type="checkbox"
                   checked={articles.length > 0 && articles.every(a => checkedArticles.has(a.id))}
                   onChange={() => {
-                    if (articles.every(a => checkedArticles.has(a.id))) {
-                      articles.forEach(a => onCheckArticle?.(a.id));
-                    } else {
-                      articles.forEach(a => !checkedArticles.has(a.id) && onCheckArticle?.(a.id));
+                    if (onCheckArticle) {
+                      if (articles.every(a => checkedArticles.has(a.id))) {
+                        // 全選択解除
+                        articles.forEach(a => onCheckArticle(a.id));
+                      } else {
+                        // 全選択
+                        articles.forEach(a => {
+                          if (!checkedArticles.has(a.id)) {
+                            onCheckArticle(a.id);
+                          }
+                        });
+                      }
                     }
                   }}
                   className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
@@ -127,8 +137,19 @@ export default function ArticleTable({
               </th>
             )}
             <th
-              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase cursor-pointer"
+              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase cursor-pointer resize-x overflow-hidden min-w-0"
+              onClick={() => handleSort("date")}
+              style={{ width: '10%', minWidth: '90px' }}
+            >
+              <span className="flex items-center">
+                {t("articles.tableColumns.date")}
+                {renderSortIcon("date")}
+              </span>
+            </th>
+            <th
+              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase cursor-pointer resize-x overflow-hidden min-w-0"
               onClick={() => handleSort("title")}
+              style={{ width: '28%', minWidth: '180px' }}
             >
               <span className="flex items-center">
                 {t("articles.tableColumns.title")}
@@ -136,54 +157,32 @@ export default function ArticleTable({
               </span>
             </th>
             <th
-              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase cursor-pointer"
+              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase cursor-pointer resize-x overflow-hidden min-w-0"
               onClick={() => handleSort("source")}
+              style={{ width: '12%', minWidth: '100px' }}
             >
               <span className="flex items-center">
                 {t("articles.tableColumns.source")}
                 {renderSortIcon("source")}
               </span>
             </th>
-            <th
-              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase cursor-pointer"
-              onClick={() => handleSort("date")}
-            >
-              <span className="flex items-center">
-                {t("articles.tableColumns.date")}
-                {renderSortIcon("date")}
-              </span>
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase resize-x overflow-hidden min-w-0" style={{ width: '25%', minWidth: '150px' }}>
               {t("articles.tableColumns.summary")}
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase resize-x overflow-hidden min-w-0" style={{ width: '19%', minWidth: '120px' }}>
               {t("articles.tableColumns.labels")}
             </th>
-            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase">
-              <span className="sr-only">
-                {t("articles.tableColumns.actions")}
-              </span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mx-auto"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M14.828 14.828a4 4 0 10-5.656-5.656l-4 4a4 4 0 105.656 5.656l1.102-1.101"
-                />
-              </svg>
+            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase" style={{ width: '6%', minWidth: '60px' }}>
+              リンク
             </th>
+            {onDelete && (
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase">
+                <span className="sr-only">削除</span>
+                <svg className="h-4 w-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-[#232b39] divide-y divide-gray-200 dark:divide-gray-700">
@@ -202,23 +201,23 @@ export default function ArticleTable({
                   />
                 </td>
               )}
-              <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200">
+              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                {formatDate(article.publishedAt)}
+              </td>
+              <td className="px-4 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
                 <Link
                   href={`/articles/${article.id}`}
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors block"
                   style={{ viewTransitionName: `article-title-${article.id}` }}
                   title={article.title}
                 >
-                  {article.title.length > 25 ? `${article.title.substring(0, 25)}...` : article.title}
+                  {article.title}
                 </Link>
               </td>
               <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                 {article.source}
               </td>
-              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                {formatDate(article.publishedAt)}
-              </td>
-              <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+              <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
                 {article.summary}
               </td>
               <td className="px-4 py-4">
@@ -258,6 +257,20 @@ export default function ArticleTable({
                   </svg>
                 </a>
               </td>
+              {onDelete && (
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                  <button
+                    onClick={() => onDelete(article.id)}
+                    title="削除"
+                    className="inline-flex items-center justify-center w-8 h-8 bg-red-600/50 hover:bg-red-600 text-red-300 hover:text-white rounded-full transition-colors"
+                    aria-label="削除"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

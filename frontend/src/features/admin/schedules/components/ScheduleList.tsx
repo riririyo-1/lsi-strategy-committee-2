@@ -72,8 +72,8 @@ export default function ScheduleList({
   return (
     <div className="space-y-4">
       {schedules.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-[#232b39] rounded-lg">
-          <p className="text-gray-500 dark:text-gray-400">
+        <div className="text-center py-12">
+          <p className="text-white/70">
             スケジュールが設定されていません
           </p>
         </div>
@@ -81,14 +81,14 @@ export default function ScheduleList({
         schedules.map(schedule => (
           <div
             key={schedule.id}
-            className="bg-white dark:bg-[#232b39] rounded-lg shadow hover:shadow-lg transition-shadow"
+            className="border border-white/20 rounded-lg hover:border-white/40 transition-colors"
           >
             {/* メインコンテンツ */}
             <div className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    <h3 className="text-lg font-semibold text-white">
                       {schedule.name}
                     </h3>
                     <span
@@ -101,27 +101,27 @@ export default function ScheduleList({
                   </div>
                   
                   {schedule.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    <p className="text-sm text-white/70 mb-3">
                       {schedule.description}
                     </p>
                   )}
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-500 dark:text-gray-400">スケジュール:</span>
-                      <span className="ml-2 text-gray-700 dark:text-gray-300">
+                      <span className="text-white/60">スケジュール:</span>
+                      <span className="ml-2 text-white/80">
                         {getScheduleTypeLabel(schedule)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500 dark:text-gray-400">タスク:</span>
-                      <span className="ml-2 text-gray-700 dark:text-gray-300">
+                      <span className="text-white/60">タスク:</span>
+                      <span className="ml-2 text-white/80">
                         {getTaskTypeLabel(schedule.taskType)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500 dark:text-gray-400">次回実行:</span>
-                      <span className="ml-2 text-gray-700 dark:text-gray-300">
+                      <span className="text-white/60">次回実行:</span>
+                      <span className="ml-2 text-white/80">
                         {schedule.nextRun
                           ? formatDistanceToNow(new Date(schedule.nextRun), {
                               addSuffix: true,
@@ -134,8 +134,8 @@ export default function ScheduleList({
 
                   {schedule.lastRun && (
                     <div className="mt-2 text-sm">
-                      <span className="text-gray-500 dark:text-gray-400">最終実行:</span>
-                      <span className="ml-2 text-gray-700 dark:text-gray-300">
+                      <span className="text-white/60">最終実行:</span>
+                      <span className="ml-2 text-white/80">
                         {formatDistanceToNow(new Date(schedule.lastRun), {
                           addSuffix: true,
                           locale: ja,

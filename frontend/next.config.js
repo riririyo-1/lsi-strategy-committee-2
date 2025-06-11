@@ -1,8 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
-  // JSONモジュールをインポート可能にする
-  webpack: (config) => {
+  // Turbopackでも動作するようにwebpack設定を条件付きに
+  webpack: (config, { isServer }) => {
+    if (!config.experiments) {
+      config.experiments = {};
+    }
+    
     config.module.rules.push({
       test: /\.json$/,
       use: "json-loader",

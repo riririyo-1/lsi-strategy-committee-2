@@ -3,14 +3,35 @@
 import { useState } from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { Article } from "@/types/article.d";
-import { pipelineTopicsApi, topicsApi } from "@/lib/apiClient";
+import { ArticleWithCategory } from "./TemplateGenerationTab";
 
 interface TopicsPreviewTabProps {
   title: string;
   publishDate: string;
   monthlySummary: string;
-  selectedArticles: Article[];
+  selectedArticles: Article[] | ArticleWithCategory[];
 }
+
+// カテゴリ定義
+const MAIN_CATEGORIES = [
+  { id: "political", name: "Political", nameJa: "政治・政策" },
+  { id: "economical", name: "Economical", nameJa: "経済・市場" },
+  { id: "social", name: "Social", nameJa: "社会・文化" },
+  { id: "technological", name: "Technological", nameJa: "技術・イノベーション" },
+];
+
+const SUB_CATEGORIES = [
+  { id: "government_initiatives", name: "Government Initiatives", nameJa: "国の取り組み" },
+  { id: "ma", name: "M&A", nameJa: "M&A" },
+  { id: "production_tech", name: "Production Technology", nameJa: "生産技術" },
+  { id: "advanced_tech", name: "Advanced Technology", nameJa: "先端技術" },
+  { id: "social_trends", name: "Social Trends", nameJa: "世の中の動き" },
+  { id: "market_trends", name: "Market Trends", nameJa: "市場動向" },
+  { id: "research_development", name: "R&D", nameJa: "研究開発" },
+  { id: "supply_chain", name: "Supply Chain", nameJa: "サプライチェーン" },
+  { id: "environmental", name: "Environmental", nameJa: "環境・サステナビリティ" },
+  { id: "others", name: "Others", nameJa: "その他" },
+];
 
 export default function TopicsPreviewTab({
   title,
@@ -18,10 +39,10 @@ export default function TopicsPreviewTab({
   monthlySummary,
   selectedArticles,
 }: TopicsPreviewTabProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const isJa = locale === "ja";
   
   const [isExporting, setIsExporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState<"html" | "pdf">("html");
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ja-JP', {
@@ -31,20 +52,44 @@ export default function TopicsPreviewTab({
     });
   };
 
-  const getArticlesByCategory = () => {
-    // 実際にはTemplateGenerationTabからカテゴリ情報を受け取る必要がある
-    // 今回は簡易実装として、ソース別にグループ化
-    const grouped: { [key: string]: Article[] } = {};
+  // カテゴリIDから表示名を取得
+  const getCategoryName = (categoryId: string | undefined): string => {
+    if (!categoryId) return "未分類";
     
-    selectedArticles.forEach(article => {
-      const key = article.source || "その他";
-      if (!grouped[key]) {
-        grouped[key] = [];
+    const mainCat = MAIN_CATEGORIES.find(cat => cat.id === categoryId);
+    if (mainCat) return isJa ? mainCat.nameJa : mainCat.name;
+    
+    const subCat = SUB_CATEGORIES.find(cat => cat.id === categoryId);
+    if (subCat) return isJa ? subCat.nameJa : subCat.name;
+    
+    return categoryId;
+  };
+
+  const getArticlesByCategory = () => {
+    const categorized: { [key: string]: ArticleWithCategory[] } = {};
+    const uncategorized: ArticleWithCategory[] = [];
+    
+    // ArticleWithCategory型にキャスト
+    const articlesWithCategory = selectedArticles as ArticleWithCategory[];
+    
+    articlesWithCategory.forEach(article => {
+      if ('mainCategory' in article && article.mainCategory) {
+        const categoryName = getCategoryName(article.mainCategory);
+        if (!categorized[categoryName]) {
+          categorized[categoryName] = [];
+        }
+        categorized[categoryName].push(article);
+      } else {
+        uncategorized.push(article as ArticleWithCategory);
       }
-      grouped[key].push(article);
     });
     
-    return grouped;
+    // 未分類がある場合は追加
+    if (uncategorized.length > 0) {
+      categorized["未分類"] = uncategorized;
+    }
+    
+    return categorized;
   };
 
   const handleExport = async () => {
@@ -61,25 +106,17 @@ export default function TopicsPreviewTab({
     try {
       setIsExporting(true);
       
-      // Pipeline API を使用してHTMLエクスポート
-      const response = await pipelineTopicsApi.export({
-        topic_id: "preview", // プレビュー用の仮ID
-        format_type: exportFormat
-      });
-
-      // HTMLをダウンロード
-      if (exportFormat === "html") {
-        const htmlContent = generateHTMLContent();
-        const blob = new Blob([htmlContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title.replace(/[^a-zA-Z0-9]/g, '_')}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
+      // HTMLエクスポート
+      const htmlContent = generateHTMLContent();
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
     } catch (error) {
       console.error("Failed to export:", error);
@@ -160,9 +197,32 @@ export default function TopicsPreviewTab({
             color: #666;
             margin-bottom: 10px;
         }
+        .article-subcategory {
+            display: inline-block;
+            background-color: #e0e0e0;
+            color: #333;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            margin-left: 10px;
+        }
         .article-summary {
             font-size: 14px;
             line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        .article-labels {
+            margin-bottom: 8px;
+        }
+        .label {
+            display: inline-block;
+            background-color: #e3f2fd;
+            color: #1976d2;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            margin-right: 5px;
+            margin-bottom: 5px;
         }
         .article-url {
             font-size: 12px;
@@ -207,9 +267,17 @@ export default function TopicsPreviewTab({
             <div class="article-meta">
                 出典: ${article.source} | 
                 公開日: ${formatDate(article.publishedAt)}
+                ${article.subCategory ? `
+                <span class="article-subcategory">${getCategoryName(article.subCategory)}</span>
+                ` : ''}
             </div>
             ${article.summary ? `
             <div class="article-summary">${article.summary}</div>
+            ` : ''}
+            ${article.labels && article.labels.length > 0 ? `
+            <div class="article-labels">
+                ${article.labels.map(label => `<span class="label">${label}</span>`).join('')}
+            </div>
             ` : ''}
             <div class="article-url">
                 <a href="${article.articleUrl}" target="_blank">元記事を見る</a>
@@ -232,53 +300,35 @@ export default function TopicsPreviewTab({
 
   return (
     <div className="space-y-6">
-      {/* エクスポートコントロール */}
-      <div className="bg-[#2d3646] rounded-lg p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-200">エクスポート</h3>
-          <div className="flex items-center gap-4">
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">形式</label>
-              <select
-                value={exportFormat}
-                onChange={(e) => setExportFormat(e.target.value as "html" | "pdf")}
-                className="px-3 py-2 bg-[#3a4553] text-gray-200 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
-              >
-                <option value="html">HTML</option>
-                <option value="pdf">PDF</option>
-              </select>
-            </div>
-            <button
-              onClick={handleExport}
-              disabled={isExporting || !title.trim() || selectedArticles.length === 0}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded transition-colors"
-            >
-              {isExporting ? "エクスポート中..." : "ダウンロード"}
-            </button>
-          </div>
-        </div>
-        
-        <p className="text-sm text-gray-400">
-          TOPICSをHTML形式またはPDF形式でダウンロードできます。
-        </p>
+      {/* ダウンロードボタン */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleExport}
+          disabled={isExporting || !title.trim() || selectedArticles.length === 0}
+          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md"
+        >
+          {isExporting ? t("admin.topics.exporting") : t("common.download")}
+        </button>
       </div>
 
       {/* プレビュー表示 */}
-      <div className="bg-white rounded-lg shadow-lg p-8 text-gray-900">
+      <div className="bg-white rounded-xl shadow-lg p-8 text-gray-900">
         {/* ヘッダー */}
         <div className="border-b-2 border-blue-600 pb-6 mb-8">
           <h1 className="text-3xl font-bold text-blue-600 mb-2">
-            {title || "タイトル未設定"}
+            {title || t("admin.topics.titleNotSet")}
           </h1>
           <p className="text-gray-600">
-            発行日: {formatDate(publishDate)}
+            {t("admin.topics.publishDate")}: {formatDate(publishDate)}
           </p>
         </div>
 
         {/* 月次まとめ */}
         {monthlySummary && (
           <div className="bg-gray-50 border-l-4 border-blue-600 p-6 mb-8">
-            <h2 className="text-xl font-semibold text-blue-600 mb-4">今月の概況</h2>
+            <h2 className="text-xl font-semibold text-blue-600 mb-4">
+              {t("admin.topics.monthlyOverview")}
+            </h2>
             <div className="whitespace-pre-wrap text-gray-700">
               {monthlySummary}
             </div>
@@ -288,13 +338,13 @@ export default function TopicsPreviewTab({
         {/* 記事一覧 */}
         {selectedArticles.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            <p>記事が選択されていません</p>
-            <p className="text-sm">記事選択タブで記事を選択してください</p>
+            <p>{t("admin.topics.noArticlesSelected")}</p>
+            <p className="text-sm">{t("admin.topics.selectArticlesHint")}</p>
           </div>
         ) : (
           <div className="space-y-8">
             {Object.entries(groupedArticles).map(([category, articles]) => (
-              <div key={category} className="border-b border-gray-200 pb-6">
+              <div key={category} className="border-b border-gray-200 pb-6 last:border-0">
                 <h2 className="text-xl font-semibold text-blue-600 border-b border-gray-300 pb-2 mb-6">
                   {category} ({articles.length}件)
                 </h2>
@@ -307,7 +357,13 @@ export default function TopicsPreviewTab({
                       </h3>
                       
                       <p className="text-sm text-gray-600 mb-3">
-                        出典: {article.source} | 公開日: {formatDate(article.publishedAt)}
+                        {t("admin.topics.source")}: {article.source} | 
+                        {t("admin.topics.publishedDate")}: {formatDate(article.publishedAt)}
+                        {article.subCategory && (
+                          <span className="ml-2 inline-block bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded">
+                            {getCategoryName(article.subCategory)}
+                          </span>
+                        )}
                       </p>
                       
                       {article.summary && (
@@ -336,7 +392,7 @@ export default function TopicsPreviewTab({
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 hover:underline"
                         >
-                          元記事を見る →
+                          {t("admin.topics.viewOriginal")} →
                         </a>
                       </div>
                     </div>
@@ -350,7 +406,9 @@ export default function TopicsPreviewTab({
         {/* フッター */}
         <div className="mt-12 pt-6 border-t border-gray-200 text-center text-gray-500">
           <p>LSI戦略コミッティ TOPICS配信</p>
-          <p className="text-sm">生成日時: {new Date().toLocaleString('ja-JP')}</p>
+          <p className="text-sm">
+            {t("admin.topics.generatedAt")}: {new Date().toLocaleString('ja-JP')}
+          </p>
         </div>
       </div>
     </div>

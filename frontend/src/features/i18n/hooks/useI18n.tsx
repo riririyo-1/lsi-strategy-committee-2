@@ -50,17 +50,9 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
   repository = new JsonTranslationRepository(),
   initialLocale,
 }) => {
-  // SSR時は初期値のみ返す（副作用・fetch禁止）
-  if (typeof window === "undefined") {
-    return (
-      <I18nContext.Provider value={defaultContext}>
-        {children}
-      </I18nContext.Provider>
-    );
-  }
-
   // クライアントサイドで実行時、ローカルストレージからロケールを取得
   const getInitialLocale = (): Locale => {
+    if (typeof window === "undefined") return defaultLocale;
     if (initialLocale) return initialLocale;
 
     try {
@@ -68,7 +60,7 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
       if (savedLocale && supportedLocales.includes(savedLocale)) {
         return savedLocale;
       }
-    } catch (e) {
+    } catch {
       console.error("ローカルストレージへのアクセスに失敗しました。");
     }
 
@@ -80,6 +72,15 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [availableLocales, setAvailableLocales] =
     useState<Locale[]>(supportedLocales);
+
+  // SSR時は初期値のみ返す（副作用・fetch禁止）
+  if (typeof window === "undefined") {
+    return (
+      <I18nContext.Provider value={defaultContext}>
+        {children}
+      </I18nContext.Provider>
+    );
+  }
 
   // 利用可能な言語リストの取得（クライアントのみ）
   useEffect(() => {

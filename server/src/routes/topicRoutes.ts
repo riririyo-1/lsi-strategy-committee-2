@@ -16,6 +16,9 @@ router.post("/", createTopicsValidation, (req: Request, res: Response) => topicC
 // Topic更新
 router.put("/:id", updateTopicsValidation, (req: Request, res: Response) => topicController.update(req, res));
 
+// Topic削除
+router.delete("/:id", (req: Request, res: Response) => topicController.delete(req, res));
+
 // 記事カテゴリ更新
 router.patch("/:id/article/:article_id/category", (req: Request, res: Response) => 
   topicController.updateArticleCategory(req, res)
@@ -23,6 +26,9 @@ router.patch("/:id/article/:article_id/category", (req: Request, res: Response) 
 
 // LLM自動分類
 router.post("/:id/categorize", (req: Request, res: Response) => topicController.categorize(req, res));
+
+// 月次サマリ生成
+router.post("/:id/generate-summary", (req: Request, res: Response) => topicController.generateSummary(req, res));
 
 // HTMLテンプレート出力
 router.post("/:id/export", (req: Request, res: Response) => topicController.export(req, res));

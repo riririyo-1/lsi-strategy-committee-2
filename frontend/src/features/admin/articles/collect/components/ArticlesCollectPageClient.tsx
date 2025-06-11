@@ -8,6 +8,10 @@ import ArticleTable from "@/features/articles/components/ArticleTable";
 import { articlesApi } from "@/lib/apiClient";
 import ArticleManagementTab from "./ArticleManagementTab";
 import ScheduleSettingsTab from "@/features/admin/schedules/components/ScheduleSettingsTab";
+import { PageLayout } from "@/components/common/PageLayout";
+import { Button } from "@/components/common/Button";
+import { Tabs, TabItem } from "@/components/common/Tabs";
+import DatePicker from "@/components/common/DatePicker";
 
 // RSS収集用のコンポーネント
 function RSSCollectionTab() {
@@ -16,9 +20,11 @@ function RSSCollectionTab() {
   const today = new Date();
   const weekAgo = new Date(today);
   weekAgo.setDate(weekAgo.getDate() - 7);
-  
-  const [startDate, setStartDate] = useState(weekAgo.toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
+
+  const [startDate, setStartDate] = useState(
+    weekAgo.toISOString().split("T")[0]
+  );
+  const [endDate, setEndDate] = useState(today.toISOString().split("T")[0]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [collectedArticles, setCollectedArticles] = useState<Article[]>([]);
   const [isCollecting, setIsCollecting] = useState(false);
@@ -59,15 +65,19 @@ function RSSCollectionTab() {
           // 最新の記事を取得
           const articlesResponse = await articlesApi.getAll();
           const allArticles = articlesResponse.data;
-          
+
           // 選択したソースの記事のみをフィルタリング
           const filteredArticles = allArticles
-            .filter((article: Article) => selectedSources.includes(article.source))
-            .sort((a: Article, b: Article) => 
-              new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+            .filter((article: Article) =>
+              selectedSources.includes(article.source)
+            )
+            .sort(
+              (a: Article, b: Article) =>
+                new Date(b.publishedAt).getTime() -
+                new Date(a.publishedAt).getTime()
             )
             .slice(0, result.insertedCount + result.skippedCount); // 収集した件数分だけ表示
-          
+
           setCollectedArticles(filteredArticles);
           console.log(`実際の記事 ${filteredArticles.length} 件を表示`);
         } catch (error) {
@@ -90,12 +100,14 @@ function RSSCollectionTab() {
       }
       if (result.invalidCount > 0) {
         message += ` ${result.invalidCount} 件の記事は登録できませんでした。`;
-        
+
         // 無効な記事の詳細表示
         if (result.invalidItems && result.invalidItems.length > 0) {
           message += "\n\n【登録できなかった記事】\n";
           result.invalidItems.forEach((item: any, index: number) => {
-            message += `${index + 1}. ${item.article?.title || '不明'} - ${item.errors?.join(', ') || 'エラー詳細不明'}\n`;
+            message += `${index + 1}. ${item.article?.title || "不明"} - ${
+              item.errors?.join(", ") || "エラー詳細不明"
+            }\n`;
           });
         }
       }
@@ -140,47 +152,46 @@ function RSSCollectionTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
       {/* 収集設定 */}
-      <div className="bg-white dark:bg-[#1d2433] rounded-lg p-6 shadow">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
-          {t("articlesCollect.collectionSettings")}
-        </h2>
+      <h2 className="text-xl font-semibold text-white mb-4">
+        {t("articlesCollect.collectionSettings")}
+      </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               {t("articles.collect.startDate")}
             </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#232b39] text-gray-900 dark:text-gray-100"
+            <DatePicker
+              selected={startDate ? new Date(startDate) : undefined}
+              onSelect={(date) => setStartDate(date.toISOString().split("T")[0])}
+              placeholder="開始日を選択"
+              className="w-full"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               {t("articles.collect.endDate")}
             </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#232b39] text-gray-900 dark:text-gray-100"
+            <DatePicker
+              selected={endDate ? new Date(endDate) : undefined}
+              onSelect={(date) => setEndDate(date.toISOString().split("T")[0])}
+              placeholder="終了日を選択"
+              className="w-full"
             />
           </div>
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-white/80 mb-2">
             {t("articles.collect.selectSources")}
           </label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {sources.map((source) => (
               <label
                 key={source}
-                className="flex items-center text-sm text-gray-700 dark:text-gray-300"
+                className="flex items-center text-sm text-white/80"
               >
                 <input
                   type="checkbox"
@@ -194,7 +205,7 @@ function RSSCollectionTab() {
           </div>
         </div>
 
-        <button
+        <Button
           onClick={handleCollection}
           disabled={
             isCollecting ||
@@ -202,35 +213,32 @@ function RSSCollectionTab() {
             !endDate ||
             selectedSources.length === 0
           }
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-md transition-colors"
+          variant="primary"
+          isLoading={isCollecting}
         >
-          {isCollecting
-            ? t("common.processing")
-            : t("articles.collect.collectButton")}
-        </button>
-      </div>
+          {t("articles.collect.collectButton")}
+        </Button>
 
       {/* 収集結果 */}
       {collectedArticles.length > 0 && (
-        <div className="bg-white dark:bg-[#1d2433] rounded-lg p-6 shadow">
+        <div className="mt-8">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+            <h3 className="text-lg font-semibold text-white">
               収集結果 ({collectedArticles.length}件)
             </h3>
-            <button
+            <Button
               onClick={handleLLMProcessing}
               disabled={isProcessing}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors"
+              variant="primary"
+              isLoading={isProcessing}
             >
-              {isProcessing
-                ? t("common.processing")
-                : t("articles.collect.summarizeButton")}
-            </button>
+              {t("articles.collect.summarizeButton")}
+            </Button>
           </div>
           <ArticleTable articles={collectedArticles} />
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -347,29 +355,28 @@ function ManualAddTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
       {/* 手動追加フォーム */}
-      <div className="bg-white dark:bg-[#1d2433] rounded-lg p-6 shadow">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
-          {t("articlesCollect.manualAddForm")}
-        </h2>
+      <h2 className="text-xl font-semibold text-white mb-4">
+        {t("articlesCollect.manualAddForm")}
+      </h2>
 
         {/* エラー・成功メッセージ */}
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-400 text-red-200 rounded">
             {errorMessage}
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+          <div className="mb-4 p-3 bg-green-500/20 border border-green-400 text-green-200 rounded">
             {successMessage}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="space-y-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               {t("articles.collect.title")}
             </label>
             <input
@@ -377,11 +384,11 @@ function ManualAddTab() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("articles.collect.enterTitle")}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#232b39] text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 border border-white/20 rounded-md bg-white/10 text-white"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               {t("articles.collect.url")}
             </label>
             <input
@@ -389,22 +396,22 @@ function ManualAddTab() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t("articles.collect.enterUrl")}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#232b39] text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 border border-white/20 rounded-md bg-white/10 text-white"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               {t("articles.collect.publishDate")}
             </label>
-            <input
-              type="date"
-              value={publishDate}
-              onChange={(e) => setPublishDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#232b39] text-gray-900 dark:text-gray-100"
+            <DatePicker
+              selected={publishDate ? new Date(publishDate) : undefined}
+              onSelect={(date) => setPublishDate(date.toISOString().split("T")[0])}
+              placeholder="公開日を選択"
+              className="w-full"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               {t("articles.collect.source")}
             </label>
             <input
@@ -412,138 +419,98 @@ function ManualAddTab() {
               value={source}
               onChange={(e) => setSource(e.target.value)}
               placeholder={t("articles.collect.enterSource")}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#232b39] text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 border border-white/20 rounded-md bg-white/10 text-white"
             />
           </div>
         </div>
 
-        <button
+        <Button
           onClick={handleAddArticle}
           disabled={isAdding || !title || !url || !publishDate || !source}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-md transition-colors"
+          variant="primary"
+          isLoading={isAdding}
         >
-          {isAdding ? t("common.processing") : t("articles.collect.addButton")}
-        </button>
-      </div>
+          {t("articles.collect.addButton")}
+        </Button>
 
       {/* 手動追加記事一覧 */}
       {manualArticles.length > 0 && (
-        <div className="bg-white dark:bg-[#1d2433] rounded-lg p-6 shadow">
+        <div className="mt-8">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+            <h3 className="text-lg font-semibold text-white">
               追加記事一覧 ({manualArticles.length}件)
             </h3>
-            <button
+            <Button
               onClick={handleLLMProcessing}
               disabled={isProcessing}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors"
+              variant="primary"
+              isLoading={isProcessing}
             >
-              {isProcessing
-                ? t("common.processing")
-                : t("articles.collect.summarizeButton")}
-            </button>
+              {t("articles.collect.summarizeButton")}
+            </Button>
           </div>
           <ArticleTable articles={manualArticles} />
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 export default function ArticlesCollectPageClient() {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<"management" | "rss" | "manual" | "schedule">("management");
+  const [activeTab, setActiveTab] = useState<
+    "management" | "rss" | "manual" | "schedule"
+  >("management");
+
+  const actions = (
+    <>
+      <div></div>
+      <Button
+        variant="secondary"
+        onClick={() => window.location.href = "/admin"}
+      >
+        {t("common.back")}
+      </Button>
+    </>
+  );
+
+  const tabItems: TabItem[] = [
+    {
+      id: "management",
+      label: "記事管理",
+      content: <ArticleManagementTab />
+    },
+    {
+      id: "rss",
+      label: "RSS収集",
+      content: <RSSCollectionTab />
+    },
+    {
+      id: "manual",
+      label: "手動追加",
+      content: <ManualAddTab />
+    },
+    {
+      id: "schedule",
+      label: "定期設定",
+      content: <ScheduleSettingsTab />
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-[#181e29] py-20 px-4">
+    <PageLayout
+      title={t("articlesCollect.title")}
+      description={t("articlesCollect.description")}
+      actions={actions}
+      showActionBar={true}
+    >
       <div className="max-w-7xl mx-auto">
-        {/* ヘッダー */}
-        <div className="mb-8">
-          <div className="mb-4">
-            <Link
-              href="/admin"
-              className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              {t("admin.common.backToAdmin")}
-            </Link>
-          </div>
-
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-2">
-            {t("articlesCollect.title")}
-          </h1>
-
-          <p className="text-gray-600 dark:text-gray-300">
-            {t("articlesCollect.description")}
-          </p>
-        </div>
-
-        {/* タブナビゲーション */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab("management")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "management"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
-                }`}
-              >
-                記事管理
-              </button>
-              <button
-                onClick={() => setActiveTab("rss")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "rss"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
-                }`}
-              >
-                RSS収集
-              </button>
-              <button
-                onClick={() => setActiveTab("manual")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "manual"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
-                }`}
-              >
-                手動追加
-              </button>
-              <button
-                onClick={() => setActiveTab("schedule")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "schedule"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
-                }`}
-              >
-                定期設定
-              </button>
-            </nav>
-          </div>
-        </div>
-
-        {/* タブコンテンツ */}
-        {activeTab === "management" && <ArticleManagementTab />}
-        {activeTab === "rss" && <RSSCollectionTab />}
-        {activeTab === "manual" && <ManualAddTab />}
-        {activeTab === "schedule" && <ScheduleSettingsTab />}
+        <Tabs
+          items={tabItems}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
       </div>
-    </div>
+    </PageLayout>
   );
 }

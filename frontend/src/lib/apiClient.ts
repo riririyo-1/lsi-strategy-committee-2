@@ -1,24 +1,19 @@
 import axios from "axios";
 
-// ===== Server API (Express + Prisma) =====
-// サーバーサイド（Next.js API Routes）では内部URL、クライアントサイド（ブラウザ）では外部URLを使用
-const getApiBaseUrl = () => {
-  // サーバーサイドの場合はDocker内部URL
+// ===== Base URL Helper =====
+const getBaseUrl = (internalEnvKey: string, publicEnvKey: string, defaultInternal: string, defaultPublic: string) => {
   if (typeof window === "undefined") {
-    return process.env.API_URL_INTERNAL || "http://server:4000";
+    return process.env[internalEnvKey] || defaultInternal;
   }
-  // クライアントサイドの場合は外部URL
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:4100";
+  return process.env[publicEnvKey] || defaultPublic;
 };
 
-const getPipelineBaseUrl = () => {
-  // サーバーサイドの場合はDocker内部URL
-  if (typeof window === "undefined") {
-    return process.env.PIPELINE_URL_INTERNAL || "http://pipeline:8000";
-  }
-  // クライアントサイドの場合は外部URL
-  return process.env.NEXT_PUBLIC_PIPELINE_URL || "http://localhost:8100";
-};
+// ===== Server API (Express + Prisma) =====
+const getApiBaseUrl = () => 
+  getBaseUrl('API_URL_INTERNAL', 'NEXT_PUBLIC_API_URL', 'http://server:4000', 'http://localhost:4100');
+
+const getPipelineBaseUrl = () => 
+  getBaseUrl('PIPELINE_URL_INTERNAL', 'NEXT_PUBLIC_PIPELINE_URL', 'http://pipeline:8000', 'http://localhost:8100');
 
 const apiClient = axios.create({
   baseURL: getApiBaseUrl(),
@@ -35,16 +30,19 @@ const pipelineClient = axios.create({
   },
 });
 
+// ===== CRUD API Factory =====
+const createCrudApi = <T = any>(resource: string) => ({
+  getAll: () => apiClient.get(`/api/${resource}`),
+  getById: (id: string) => apiClient.get(`/api/${resource}/${id}`),
+  create: (data: T) => apiClient.post(`/api/${resource}`, data),
+  update: (id: string, data: Partial<T>) => apiClient.put(`/api/${resource}/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/api/${resource}/${id}`),
+});
+
 // ===== SERVER APIs (Express + Prisma) =====
 
 // Research API
-export const researchApi = {
-  getAll: () => apiClient.get("/api/research"),
-  getById: (id: string) => apiClient.get(`/api/research/${id}`),
-  create: (data: any) => apiClient.post("/api/research", data),
-  update: (id: string, data: any) => apiClient.put(`/api/research/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/api/research/${id}`),
-};
+export const researchApi = createCrudApi('research');
 
 // Articles API
 export const articlesApi = {
@@ -56,11 +54,12 @@ export const articlesApi = {
     source: string;
     publishedAt: string;
   }) => apiClient.post("/api/articles", data),
-  delete: (id: string) => apiClient.delete(`/api/articles/${id}`),
-  deleteMany: (data: { ids: string[] }) =>
-    apiClient.delete("/api/articles", { data }),
-  deleteMultiple: (ids: string[]) =>
-    apiClient.delete("/api/articles", { data: { ids } }),
+  delete: (idOrIds: string | string[]) => {
+    if (Array.isArray(idOrIds)) {
+      return apiClient.delete("/api/articles", { data: { ids: idOrIds } });
+    }
+    return apiClient.delete(`/api/articles/${idOrIds}`);
+  },
   getLabels: () => apiClient.get("/api/articles/labels"),
   collectRSS: (data: {
     sources: string[];
@@ -82,24 +81,19 @@ export const articlesApi = {
 
 // Topics API
 export const topicsApi = {
-  getAll: () => apiClient.get("/api/topics"),
-  getById: (id: string) => apiClient.get(`/api/topics/${id}`),
-  create: (data: any) => apiClient.post("/api/topics", data),
-  update: (id: string, data: any) => apiClient.put(`/api/topics/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/api/topics/${id}`),
+  ...createCrudApi('topics'),
   export: (id: string) => apiClient.post(`/api/topics/${id}/export`),
-  categorize: (id: string) => apiClient.post(`/api/topics/${id}/categorize`),
+  categorize: (id: string, data: { article_ids: string[] }) => apiClient.post(`/api/topics/${id}/categorize`, data),
+  generateSummary: (id: string, data: { article_ids: string[]; summary_style?: string }) => 
+    apiClient.post(`/api/topics/${id}/generate-summary`, data),
   updateArticleCategory: (id: string, articleId: string, data: any) =>
     apiClient.patch(`/api/topics/${id}/article/${articleId}/category`, data),
 };
 
 // Categories API
 export const categoriesApi = {
-  getAll: () => apiClient.get("/api/categories"),
-  create: (data: any) => apiClient.post("/api/categories", data),
-  update: (id: string, data: any) =>
-    apiClient.put(`/api/categories/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/api/categories/${id}`),
+  ...createCrudApi('categories'),
+  getById: undefined, // Categories APIにはgetByIdがないため除外
 };
 
 // Health API
@@ -109,11 +103,7 @@ export const healthApi = {
 
 // Schedules API
 export const schedulesApi = {
-  getAll: () => apiClient.get("/api/schedules"),
-  getById: (id: string) => apiClient.get(`/api/schedules/${id}`),
-  create: (data: any) => apiClient.post("/api/schedules", data),
-  update: (id: string, data: any) => apiClient.put(`/api/schedules/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/api/schedules/${id}`),
+  ...createCrudApi('schedules'),
   activate: (id: string) => apiClient.post(`/api/schedules/${id}/activate`),
   deactivate: (id: string) => apiClient.post(`/api/schedules/${id}/deactivate`),
   getExecutions: (scheduleId: string, limit?: number) => 
@@ -231,6 +221,13 @@ export const pipelineTopicsApi = {
     pipelineClient.post(
       `/api/topics/${topicId}/regenerate?template_type=${templateType}`
     ),
+
+  // カテゴリ分類
+  categorize: (data: {
+    article_ids: string[];
+    main_categories: Array<{ id: string; name: string }>;
+    sub_categories: Array<{ id: string; name: string }>;
+  }) => pipelineClient.post("/api/topics/categorize", data),
 };
 
 export default apiClient;

@@ -4,126 +4,111 @@ import {
   GetTopicsResult,
   ITopicsRepository,
 } from "../ports/ITopicsRepository";
-
-// ダミーデータ（後で実際のAPIから取得するように変更）
-const dummyTopics: Topic[] = [
-  {
-    id: "topic-001",
-    title: "2025年5月号 TOPICS",
-    publishDate: "2025-05-01",
-    summary:
-      "今月の半導体業界は、特に量子コンピューティング向けLSIの最新開発状況やEUVリソグラフィ技術の進展が注目されました。また、サステナブルな半導体製造への取り組みも加速しています。",
-    articleCount: 3,
-    categories: [
-      {
-        id: "cat-1",
-        name: "技術動向",
-        displayOrder: 1,
-        articles: [{ id: "a1" }, { id: "a2" }],
-      },
-      {
-        id: "cat-2",
-        name: "市場トレンド",
-        displayOrder: 2,
-        articles: [{ id: "a3" }],
-      },
-    ],
-    createdAt: "2025-05-01T00:00:00Z",
-    updatedAt: "2025-05-01T00:00:00Z",
-  },
-  {
-    id: "topic-002",
-    title: "2025年4月号 TOPICS",
-    publishDate: "2025-04-01",
-    summary:
-      "車載半導体の需給バランスが大きく改善し、新世代のLSI設計プロセスにおける自動化・AI活用が加速しています。また、リケーブルな半導体サプライチェーンの構築に向けた国際的な動きも活発化しています。",
-    articleCount: 5,
-    categories: [
-      {
-        id: "cat-2",
-        name: "市場トレンド",
-        displayOrder: 1,
-        articles: [{ id: "b1" }, { id: "b2" }, { id: "b3" }],
-      },
-      {
-        id: "cat-3",
-        name: "企業動向",
-        displayOrder: 2,
-        articles: [{ id: "b4" }, { id: "b5" }],
-      },
-    ],
-    createdAt: "2025-04-01T00:00:00Z",
-    updatedAt: "2025-04-01T00:00:00Z",
-  },
-];
+import { topicsApi } from "@/lib/apiClient";
 
 // APIクライアントの実装
 export class ApiTopicsRepository implements ITopicsRepository {
   async getTopics(params: GetTopicsParams): Promise<GetTopicsResult> {
-    // 実際にはAPIから取得する処理を実装
-    // 今回はモックデータを使用
-    const { query, page = 1, pageSize = 10 } = params;
+    try {
+      const response = await topicsApi.getAll();
+      const topics: any[] = response.data;
 
-    let filteredTopics = [...dummyTopics];
+      // 検索クエリがある場合はフィルタリング
+      let filteredTopics = topics;
+      if (params.query) {
+        const lowerQuery = params.query.toLowerCase();
+        filteredTopics = topics.filter(
+          (topic) =>
+            topic.title.toLowerCase().includes(lowerQuery) ||
+            (topic.summary && topic.summary.toLowerCase().includes(lowerQuery))
+        );
+      }
 
-    // 検索クエリがある場合はフィルタリング
-    if (query) {
-      const lowerQuery = query.toLowerCase();
-      filteredTopics = filteredTopics.filter(
-        (topic) =>
-          topic.title.toLowerCase().includes(lowerQuery) ||
-          topic.summary.toLowerCase().includes(lowerQuery)
-      );
+      // ページネーション
+      const page = params.page || 1;
+      const pageSize = params.pageSize || 10;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedTopics = filteredTopics.slice(startIndex, endIndex);
+
+      // Topic型に変換
+      const convertedTopics: Topic[] = paginatedTopics.map(this.convertToTopic);
+
+      return {
+        topics: convertedTopics,
+        total: filteredTopics.length,
+        page,
+        pageSize,
+      };
+    } catch (error) {
+      console.error("Failed to fetch topics:", error);
+      throw new Error("TOPICSの取得に失敗しました");
     }
-
-    // ページネーション
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedTopics = filteredTopics.slice(startIndex, endIndex);
-
-    return {
-      topics: paginatedTopics,
-      total: filteredTopics.length,
-      page,
-      pageSize,
-    };
   }
 
   async getTopicById(id: string): Promise<Topic> {
-    // 実際にはAPIから取得する処理を実装
-    const topic = dummyTopics.find((t) => t.id === id);
-    if (!topic) {
-      throw new Error(`Topic with ID ${id} not found`);
+    try {
+      const response = await topicsApi.getById(id);
+      return this.convertToTopic(response.data);
+    } catch (error) {
+      console.error("Failed to fetch topic:", error);
+      throw new Error("TOPICSの取得に失敗しました");
     }
-    return topic;
   }
 
   async createTopic(
     topic: Omit<Topic, "id" | "createdAt" | "updatedAt">
   ): Promise<Topic> {
-    // 実際にはAPIにPOSTする処理を実装
-    const newTopic: Topic = {
-      ...topic,
-      id: `topic-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    return newTopic;
+    try {
+      const response = await topicsApi.create({
+        title: topic.title,
+        summary: topic.summary || "",
+        publishDate: topic.publishDate,
+        articles: [], // 記事は別途関連付ける
+      });
+      return this.convertToTopic(response.data);
+    } catch (error) {
+      console.error("Failed to create topic:", error);
+      throw new Error("TOPICSの作成に失敗しました");
+    }
   }
 
   async updateTopic(id: string, topic: Partial<Topic>): Promise<Topic> {
-    // 実際にはAPIにPUTする処理を実装
-    const existingTopic = await this.getTopicById(id);
-    const updatedTopic: Topic = {
-      ...existingTopic,
-      ...topic,
-      updatedAt: new Date().toISOString(),
-    };
-    return updatedTopic;
+    try {
+      const response = await topicsApi.update(id, {
+        title: topic.title,
+        summary: topic.summary,
+        publishDate: topic.publishDate,
+        articles: [], // 記事は別途関連付ける
+      });
+      return this.convertToTopic(response.data);
+    } catch (error) {
+      console.error("Failed to update topic:", error);
+      throw new Error("TOPICSの更新に失敗しました");
+    }
   }
 
   async deleteTopic(id: string): Promise<boolean> {
-    // 実際にはAPIにDELETEする処理を実装
-    return true;
+    try {
+      await topicsApi.delete(id);
+      return true;
+    } catch (error) {
+      console.error("Failed to delete topic:", error);
+      throw new Error("TOPICSの削除に失敗しました");
+    }
+  }
+
+  // APIレスポンスをTopic型に変換
+  private convertToTopic(apiTopic: any): Topic {
+    return {
+      id: apiTopic.id,
+      title: apiTopic.title,
+      publishDate: apiTopic.publishDate ? new Date(apiTopic.publishDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      summary: apiTopic.summary || "",
+      articleCount: apiTopic.articles ? apiTopic.articles.length : 0,
+      categories: [], // 現在はサポートしていない
+      createdAt: apiTopic.createdAt,
+      updatedAt: apiTopic.updatedAt,
+    };
   }
 }

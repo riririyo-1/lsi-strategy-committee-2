@@ -3,7 +3,7 @@
   --color-foreground: #222222;
   --color-navbar: #f8fafc;
   --color-navbar-text: #222222;
-  --color-footer: #e5e7eb; /* gray-200 */
+  --color-footer: rgba(255, 255, 255, 0.7); /* white/70 */
   --color-link: #2563eb;
   --color-link-hover: #1d4ed8;
 }
@@ -13,7 +13,24 @@
   --color-foreground: #f3f4f6;
   --color-navbar: #23272f;
   --color-navbar-text: #f3f4f6;
-  --color-footer: #18181b;
+  --color-footer: rgba(31, 41, 55, 0.8); /* gray-800/80 */
   --color-link: #60a5fa;
   --color-link-hover: #93c5fd;
+}
+
+/* 共通ユーティリティクラス */
+.flex-between {
+  @apply flex justify-between items-center;
+}
+
+.text-muted {
+  @apply text-gray-500 dark:text-gray-400;
+}
+
+.checkbox-standard {
+  @apply w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500;
+}
+
+.card-popup {
+  @apply bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-lg;
 }

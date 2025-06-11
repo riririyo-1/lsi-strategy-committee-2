@@ -58,7 +58,7 @@ const ResearchReportDetailClient: React.FC<ResearchReportDetailClientProps> = ({
             <p className="text-gray-200">{report.speaker}</p>
             {report.department && (
               <p className="text-sm text-gray-400">
-                {t("research.departmentLabel")}: {report.department}
+                {t("research.departmentLabel")}{report.department}
               </p>
             )}
           </div>
