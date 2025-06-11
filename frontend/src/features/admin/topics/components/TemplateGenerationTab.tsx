@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
+import { useCategories } from "@/hooks/useCategories";
 import { Article } from "@/types/article.d";
 import { topicsApi } from "@/lib/apiClient";
 import { Button } from "@/components/common/Button";
@@ -19,27 +20,6 @@ export interface ArticleWithCategory extends Article {
   subCategory?: string;
 }
 
-// カテゴリ定義（DB設計書に基づく）
-const MAIN_CATEGORIES = [
-  { id: "political", name: "Political", nameJa: "政治・政策" },
-  { id: "economical", name: "Economical", nameJa: "経済・市場" },
-  { id: "social", name: "Social", nameJa: "社会・文化" },
-  { id: "technological", name: "Technological", nameJa: "技術・イノベーション" },
-];
-
-const SUB_CATEGORIES = [
-  { id: "government_initiatives", name: "Government Initiatives", nameJa: "国の取り組み" },
-  { id: "ma", name: "M&A", nameJa: "M&A" },
-  { id: "production_tech", name: "Production Technology", nameJa: "生産技術" },
-  { id: "advanced_tech", name: "Advanced Technology", nameJa: "先端技術" },
-  { id: "social_trends", name: "Social Trends", nameJa: "世の中の動き" },
-  { id: "market_trends", name: "Market Trends", nameJa: "市場動向" },
-  { id: "research_development", name: "R&D", nameJa: "研究開発" },
-  { id: "supply_chain", name: "Supply Chain", nameJa: "サプライチェーン" },
-  { id: "environmental", name: "Environmental", nameJa: "環境・サステナビリティ" },
-  { id: "others", name: "Others", nameJa: "その他" },
-];
-
 export default function TemplateGenerationTab({
   selectedArticles,
   monthlySummary,
@@ -48,6 +28,7 @@ export default function TemplateGenerationTab({
   topicId,
 }: TemplateGenerationTabProps) {
   const { t, locale } = useI18n();
+  const { getCategoryName, getMainCategories, getSubCategories } = useCategories();
   const isJa = locale === "ja";
   
   // 記事とカテゴリの状態を管理
@@ -76,14 +57,16 @@ export default function TemplateGenerationTab({
   // カテゴリ名からIDへのマッピング
   const mapCategoryNameToId = (categoryName: string): string | undefined => {
     // メインカテゴリから検索
-    const mainCat = MAIN_CATEGORIES.find(cat => 
-      cat.name === categoryName || cat.nameJa === categoryName
+    const mainCategories = getMainCategories();
+    const mainCat = mainCategories.find(cat => 
+      cat.name === categoryName
     );
     if (mainCat) return mainCat.id;
     
     // サブカテゴリから検索
-    const subCat = SUB_CATEGORIES.find(cat => 
-      cat.name === categoryName || cat.nameJa === categoryName
+    const subCategories = getSubCategories();
+    const subCat = subCategories.find(cat => 
+      cat.name === categoryName
     );
     if (subCat) return subCat.id;
     
@@ -317,8 +300,8 @@ export default function TemplateGenerationTab({
               <ArticleCategoryCard
                 key={article.id}
                 article={article}
-                mainCategories={MAIN_CATEGORIES}
-                subCategories={SUB_CATEGORIES}
+                mainCategories={getMainCategories()}
+                subCategories={getSubCategories()}
                 onCategoryChange={handleCategoryChange}
                 onAutoCategorize={() => categorizeSingleArticle(article.id)}
                 isCategorizing={isCategorizingArticle === article.id}
@@ -343,8 +326,8 @@ function ArticleCategoryCard({
   locale
 }: {
   article: ArticleWithCategory;
-  mainCategories: typeof MAIN_CATEGORIES;
-  subCategories: typeof SUB_CATEGORIES;
+  mainCategories: Array<{ id: string; name: string }>;
+  subCategories: Array<{ id: string; name: string }>;
   onCategoryChange: (articleId: string, categoryType: 'main' | 'sub', categoryId: string) => void;
   onAutoCategorize: () => void;
   isCategorizing: boolean;
@@ -392,7 +375,7 @@ function ArticleCategoryCard({
             <option value="">{t("admin.topics.selectCategory")}</option>
             {mainCategories.map(cat => (
               <option key={cat.id} value={cat.id}>
-                {isJa ? cat.nameJa : cat.name}
+                {cat.name}
               </option>
             ))}
           </select>
@@ -410,7 +393,7 @@ function ArticleCategoryCard({
             <option value="">{t("admin.topics.selectSubCategory")}</option>
             {subCategories.map(cat => (
               <option key={cat.id} value={cat.id}>
-                {isJa ? cat.nameJa : cat.name}
+                {cat.name}
               </option>
             ))}
           </select>

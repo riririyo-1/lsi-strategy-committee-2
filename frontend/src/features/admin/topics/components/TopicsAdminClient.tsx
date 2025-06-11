@@ -71,8 +71,10 @@ export const TopicsAdminClient: React.FC = () => {
     <>
       <div className="flex items-center">
         <span className="text-white">
-          {t("admin.topics.total", { count: String(totalTopics) }) ||
-            `合計: ${totalTopics}件のTOPICS`}
+          {t("admin.topics.total", { 
+            count: String(totalTopics),
+            defaultValue: `合計: ${totalTopics}件のTOPICS`
+          })}
         </span>
       </div>
       <div className="flex gap-2">
@@ -87,7 +89,7 @@ export const TopicsAdminClient: React.FC = () => {
           onClick={() => window.location.href = "/admin/topics/create"}
         >
           <span className="mr-1">+</span>
-          {t("admin.topics.create") || "新規TOPICS作成"}
+          {t("admin.topics.create", { defaultValue: "新規TOPICS作成" })}
         </Button>
       </div>
     </>

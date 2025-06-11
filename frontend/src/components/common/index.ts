@@ -1,6 +1,8 @@
 export { Button } from './Button';
 export { Card } from './Card';
 export { Alert } from './Alert';
+export { ErrorMessage } from './ErrorMessage';
+export { LoadingSpinner } from './LoadingSpinner';
 export { PageLayout } from './PageLayout';
 export { Tabs } from './Tabs';
 export { default as Pagination } from './Pagination';

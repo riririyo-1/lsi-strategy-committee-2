@@ -1,5 +1,5 @@
 import { ResearchReportDetailClient } from "@/features/research/components/ResearchReportDetailClient";
-import { getResearchReportById } from "@/features/research/usecases/getResearchReportById";
+import { getResearchReportById } from "@/features/research/use-cases/getResearchReportById";
 import { notFound } from "next/navigation";
 import PageWithBackground from "@/components/common/PageWithBackground";
 

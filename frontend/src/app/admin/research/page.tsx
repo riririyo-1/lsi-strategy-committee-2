@@ -9,6 +9,8 @@ import SearchBar from "@/components/common/SearchBar";
 import { Card, CardMetadata, CardAction } from "@/components/common/Card";
 import { Button } from "@/components/common/Button";
 import { PageLayout } from "@/components/common/PageLayout";
+import { LoadingSpinner, ErrorMessage } from "@/components/common";
+import { formatDateToString } from "@/lib/dateUtils";
 
 export default function TrendReportsAdminPage() {
   const router = useRouter();
@@ -58,20 +60,16 @@ export default function TrendReportsAdminPage() {
     r.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toISOString().split("T")[0];
-    } catch {
-      return dateString;
-    }
-  };
+  // 共通の日付フォーマット関数を使用
 
   const actions = (
     <>
       <div className="flex items-center">
         <span className="text-white">
-          合計: {reports.length}件のレポート
+          {t("admin.research.totalReports", { 
+            count: String(reports.length),
+            defaultValue: `合計: ${reports.length}件のレポート`
+          })}
         </span>
       </div>
       <div className="flex gap-2">
@@ -97,9 +95,7 @@ export default function TrendReportsAdminPage() {
         title={t("admin.research.management")}
         description="半導体業界の調査レポートを管理します"
       >
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-        </div>
+        <LoadingSpinner size="lg" />
       </PageLayout>
     );
   }
@@ -110,9 +106,7 @@ export default function TrendReportsAdminPage() {
         title={t("admin.research.management")}
         description="半導体業界の調査レポートを管理します"
       >
-        <div className="text-center py-12 text-red-400">
-          <p>{error}</p>
-        </div>
+        <ErrorMessage message={error} />
       </PageLayout>
     );
   }
@@ -140,7 +134,7 @@ export default function TrendReportsAdminPage() {
             },
             {
               label: "",
-              value: t("admin.research.publishDate", { date: formatDate(report.publishDate) })
+              value: t("admin.research.publishDate", { date: formatDateToString(report.publishDate) })
             }
           ];
 
