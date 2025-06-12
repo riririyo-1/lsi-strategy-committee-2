@@ -132,10 +132,10 @@ export default function ScheduleSettingsTab() {
       {/* ヘッダー */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-white">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             定期実行設定
           </h2>
-          <p className="text-sm text-white/70 mt-1">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
               RSS収集やLLM処理などのタスクを定期的に自動実行する設定を管理します
             </p>
         </div>
@@ -159,7 +159,7 @@ export default function ScheduleSettingsTab() {
       {/* フォームまたは一覧 */}
       {showForm ? (
         <div>
-          <h3 className="text-lg font-semibold text-white mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
               {editingSchedule ? "スケジュール編集" : "新規スケジュール作成"}
             </h3>
             <ScheduleForm
@@ -183,8 +183,8 @@ export default function ScheduleSettingsTab() {
         <>
           {loading ? (
             <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
-              <p className="mt-2 text-white/70">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
+              <p className="mt-2 text-gray-600 dark:text-gray-300">
                   読み込み中...
               </p>
             </div>

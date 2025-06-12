@@ -5,6 +5,7 @@ import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { Schedule, ScheduleExecution } from "@/types/schedule";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
+import { ThemeText, ThemeCard, ThemeStatus } from "@/features/theme";
 
 interface ScheduleListProps {
   schedules: Schedule[];
@@ -73,7 +74,7 @@ export default function ScheduleList({
     <div className="space-y-4">
       {schedules.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-white/70">
+          <p className="text-gray-500 dark:text-gray-400">
             スケジュールが設定されていません
           </p>
         </div>
@@ -88,7 +89,7 @@ export default function ScheduleList({
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                       {schedule.name}
                     </h3>
                     <span
@@ -101,27 +102,27 @@ export default function ScheduleList({
                   </div>
                   
                   {schedule.description && (
-                    <p className="text-sm text-white/70 mb-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                       {schedule.description}
                     </p>
                   )}
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
-                      <span className="text-white/60">スケジュール:</span>
-                      <span className="ml-2 text-white/80">
+                      <span className="text-gray-500 dark:text-gray-400">スケジュール:</span>
+                      <span className="ml-2 text-gray-700 dark:text-gray-300">
                         {getScheduleTypeLabel(schedule)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-white/60">タスク:</span>
-                      <span className="ml-2 text-white/80">
+                      <span className="text-gray-500 dark:text-gray-400">タスク:</span>
+                      <span className="ml-2 text-gray-700 dark:text-gray-300">
                         {getTaskTypeLabel(schedule.taskType)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-white/60">次回実行:</span>
-                      <span className="ml-2 text-white/80">
+                      <span className="text-gray-500 dark:text-gray-400">次回実行:</span>
+                      <span className="ml-2 text-gray-700 dark:text-gray-300">
                         {schedule.nextRun
                           ? formatDistanceToNow(new Date(schedule.nextRun), {
                               addSuffix: true,

@@ -47,9 +47,14 @@ interface I18nProviderProps {
 // プロバイダーコンポーネント
 export const I18nProvider: React.FC<I18nProviderProps> = ({
   children,
-  repository = new JsonTranslationRepository(),
+  repository,
   initialLocale,
 }) => {
+  // repositoryのメモ化
+  const memoizedRepository = useMemo(() => 
+    repository || new JsonTranslationRepository(), 
+    [repository]
+  );
   // クライアントサイドで実行時、ローカルストレージからロケールを取得
   const getInitialLocale = (): Locale => {
     if (typeof window === "undefined") return defaultLocale;
@@ -86,7 +91,7 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
   useEffect(() => {
     const fetchSupportedLocales = async () => {
       try {
-        const locales = await repository.getSupportedLocales();
+        const locales = await memoizedRepository.getSupportedLocales();
         setAvailableLocales(locales);
       } catch (error) {
         console.error("対応言語の取得に失敗しました:", error);
@@ -94,7 +99,7 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
     };
 
     fetchSupportedLocales();
-  }, [repository]);
+  }, [memoizedRepository]);
 
   // ロケール変更時に翻訳を取得（クライアントのみ）
   useEffect(() => {
@@ -102,7 +107,7 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
     const fetchTranslations = async () => {
       setIsLoading(true);
       try {
-        const data = await repository.getTranslations(locale);
+        const data = await memoizedRepository.getTranslations(locale);
 
         // コンポーネントがアンマウントされていなければ状態を更新
         if (isMounted && Object.keys(data).length > 0) {
@@ -124,7 +129,7 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [locale, repository]);
+  }, [locale, memoizedRepository]);
 
   // ロケール設定と保存（クライアントのみ）
   const setLocale = (newLocale: Locale) => {

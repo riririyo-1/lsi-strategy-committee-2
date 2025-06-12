@@ -200,14 +200,18 @@ export default function ArticleManagementTab() {
 
     setIsDeleting(true);
     try {
+      console.log("🗑️ 削除開始:", Array.from(selectedArticles));
       const response = await articlesApi.delete(Array.from(selectedArticles));
+      console.log("✅ 削除API完了:", response);
 
       alert(`${selectedArticles.size}件の記事を削除しました`);
 
       // 記事リストを再読み込み
+      console.log("🔄 記事リスト再読み込み開始");
       await fetchArticles(currentPage);
+      console.log("✅ 記事リスト再読み込み完了");
     } catch (error) {
-      console.error("削除エラー:", error);
+      console.error("❌ 削除エラー:", error);
       alert("記事の削除に失敗しました");
     } finally {
       setIsDeleting(false);
@@ -339,7 +343,7 @@ export default function ArticleManagementTab() {
       {/* 操作パネル */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
         <div className="w-full lg:w-auto">
-          <h2 className="text-xl font-semibold text-white mb-2 text-center lg:text-left">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 text-center lg:text-left">
             記事管理
           </h2>
         </div>
@@ -432,7 +436,7 @@ export default function ArticleManagementTab() {
       <div>
         {loading ? (
           <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
             <p className="mt-2 text-gray-500 dark:text-gray-400">
               読み込み中...
             </p>

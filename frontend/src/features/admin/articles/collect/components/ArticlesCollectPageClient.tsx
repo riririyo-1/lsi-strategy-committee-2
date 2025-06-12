@@ -12,6 +12,7 @@ import { PageLayout } from "@/components/common/PageLayout";
 import { Button } from "@/components/common/Button";
 import { Tabs, TabItem } from "@/components/common/Tabs";
 import DatePicker from "@/components/common/DatePicker";
+import { ThemeText, ThemeLabel, ThemeInput, ThemeAlert } from "@/features/theme";
 
 // RSS収集用のコンポーネント
 function RSSCollectionTab() {
@@ -154,15 +155,15 @@ function RSSCollectionTab() {
   return (
     <>
       {/* 収集設定 */}
-      <h2 className="text-xl font-semibold text-white mb-4">
+      <ThemeText as="h2" size="h3" className="mb-4">
         {t("articlesCollect.collectionSettings")}
-      </h2>
+      </ThemeText>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
+            <ThemeLabel>
               {t("articles.collect.startDate")}
-            </label>
+            </ThemeLabel>
             <DatePicker
               selected={startDate ? new Date(startDate) : undefined}
               onSelect={(date) => setStartDate(date.toISOString().split("T")[0])}
@@ -171,9 +172,9 @@ function RSSCollectionTab() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
+            <ThemeLabel>
               {t("articles.collect.endDate")}
-            </label>
+            </ThemeLabel>
             <DatePicker
               selected={endDate ? new Date(endDate) : undefined}
               onSelect={(date) => setEndDate(date.toISOString().split("T")[0])}
@@ -184,14 +185,14 @@ function RSSCollectionTab() {
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-white/80 mb-2">
+          <ThemeLabel>
             {t("articles.collect.selectSources")}
-          </label>
+          </ThemeLabel>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {sources.map((source) => (
               <label
                 key={source}
-                className="flex items-center text-sm text-white/80"
+                className="flex items-center text-sm"
               >
                 <input
                   type="checkbox"
@@ -199,7 +200,7 @@ function RSSCollectionTab() {
                   onChange={() => handleSourceChange(source)}
                   className="mr-2 rounded"
                 />
-                {source}
+                <ThemeText variant="secondary">{source}</ThemeText>
               </label>
             ))}
           </div>
@@ -223,9 +224,9 @@ function RSSCollectionTab() {
       {collectedArticles.length > 0 && (
         <div className="mt-8">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-white">
+            <ThemeText as="h3" size="h4">
               収集結果 ({collectedArticles.length}件)
-            </h3>
+            </ThemeText>
             <Button
               onClick={handleLLMProcessing}
               disabled={isProcessing}
@@ -357,52 +358,50 @@ function ManualAddTab() {
   return (
     <>
       {/* 手動追加フォーム */}
-      <h2 className="text-xl font-semibold text-white mb-4">
+      <ThemeText as="h2" size="h3" className="mb-4">
         {t("articlesCollect.manualAddForm")}
-      </h2>
+      </ThemeText>
 
         {/* エラー・成功メッセージ */}
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-400 text-red-200 rounded">
+          <ThemeAlert variant="error" className="mb-4">
             {errorMessage}
-          </div>
+          </ThemeAlert>
         )}
 
         {successMessage && (
-          <div className="mb-4 p-3 bg-green-500/20 border border-green-400 text-green-200 rounded">
+          <ThemeAlert variant="success" className="mb-4">
             {successMessage}
-          </div>
+          </ThemeAlert>
         )}
 
         <div className="space-y-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
+            <ThemeLabel>
               {t("articles.collect.title")}
-            </label>
-            <input
+            </ThemeLabel>
+            <ThemeInput
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("articles.collect.enterTitle")}
-              className="w-full px-3 py-2 border border-white/20 rounded-md bg-white/10 text-white"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
+            <ThemeLabel>
               {t("articles.collect.url")}
-            </label>
-            <input
+            </ThemeLabel>
+            <ThemeInput
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t("articles.collect.enterUrl")}
-              className="w-full px-3 py-2 border border-white/20 rounded-md bg-white/10 text-white"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
+            <ThemeLabel>
               {t("articles.collect.publishDate")}
-            </label>
+            </ThemeLabel>
             <DatePicker
               selected={publishDate ? new Date(publishDate) : undefined}
               onSelect={(date) => setPublishDate(date.toISOString().split("T")[0])}
@@ -411,15 +410,14 @@ function ManualAddTab() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
+            <ThemeLabel>
               {t("articles.collect.source")}
-            </label>
-            <input
+            </ThemeLabel>
+            <ThemeInput
               type="text"
               value={source}
               onChange={(e) => setSource(e.target.value)}
               placeholder={t("articles.collect.enterSource")}
-              className="w-full px-3 py-2 border border-white/20 rounded-md bg-white/10 text-white"
             />
           </div>
         </div>
@@ -437,9 +435,9 @@ function ManualAddTab() {
       {manualArticles.length > 0 && (
         <div className="mt-8">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-white">
+            <ThemeText as="h3" size="h4">
               追加記事一覧 ({manualArticles.length}件)
-            </h3>
+            </ThemeText>
             <Button
               onClick={handleLLMProcessing}
               disabled={isProcessing}

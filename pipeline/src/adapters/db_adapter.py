@@ -45,11 +45,11 @@ class DatabaseAdapter:
                             skipped += 1
                             continue
                         
-                        # 記事を挿入
+                        # 記事を挿入（id フィールドを明示的に指定してUUID自動生成を有効化）
                         cur.execute(
                             """
-                            INSERT INTO "Article" (title, "articleUrl", source, summary, labels, "thumbnailUrl", "publishedAt", "fullText")
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            INSERT INTO "Article" (id, title, "articleUrl", source, summary, labels, "thumbnailUrl", "publishedAt", "fullText")
+                            VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, %s)
                             """,
                             (
                                 art.title,

@@ -289,14 +289,20 @@ export class ScheduleService {
     try {
       const pipelineUrl = process.env.PIPELINE_URL_INTERNAL || "http://pipeline:8000";
       
-      const response = await fetch(`${pipelineUrl}/api/crawl`, {
+      // 日付範囲を計算
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - (config.daysToCollect || 1));
+
+      const response = await fetch(`${pipelineUrl}/collect-rss`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          days: config.daysToCollect || 1,
-          sources: config.sources
+          sources: config.sources,
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0]
         })
       });
 

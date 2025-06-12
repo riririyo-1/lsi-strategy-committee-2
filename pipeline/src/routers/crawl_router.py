@@ -13,6 +13,7 @@ class CrawlRequest(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     days: Optional[int] = 7
+    sources: Optional[List[str]] = None
 
 
 class CrawlResponse(BaseModel):
@@ -42,7 +43,7 @@ async def crawl_articles(request: CrawlRequest):
             start_date = end_date - timedelta(days=days)
         
         # RSS記事を収集
-        articles = crawl_service.fetch_articles_from_period(start_date, end_date)
+        articles = crawl_service.fetch_articles_from_period(start_date, end_date, request.sources)
         
         if not articles:
             return CrawlResponse(

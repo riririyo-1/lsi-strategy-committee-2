@@ -28,7 +28,7 @@ class CrawlService:
             print(f"[ERROR] Failed to load rss_feeds.yaml: {e}")
             return {"feeds": []}
     
-    def fetch_articles_from_period(self, start_date: date, end_date: date) -> List[Article]:
+    def fetch_articles_from_period(self, start_date: date, end_date: date, sources: Optional[List[str]] = None) -> List[Article]:
         """指定期間のRSS記事を収集"""
         all_articles = []
         
@@ -42,6 +42,11 @@ class CrawlService:
                 source_name = feed_config.get("name", service_name)
                 
                 if not feed_url:
+                    continue
+                
+                # ソースフィルタリング
+                if sources and source_name not in sources:
+                    print(f"[INFO] Skipping {source_name} (not in requested sources: {sources})")
                     continue
                 
                 try:
@@ -158,11 +163,11 @@ class CrawlService:
             print(f"[ERROR] Failed to fetch thumbnail from {url}: {e}")
             return ""
     
-    def fetch_latest_articles(self, days: int = 7) -> List[Article]:
+    def fetch_latest_articles(self, days: int = 7, sources: Optional[List[str]] = None) -> List[Article]:
         """最新N日間の記事を取得"""
         end_date = date.today()
         start_date = end_date - timedelta(days=days)
-        return self.fetch_articles_from_period(start_date, end_date)
+        return self.fetch_articles_from_period(start_date, end_date, sources)
 
 
 # グローバルインスタンス

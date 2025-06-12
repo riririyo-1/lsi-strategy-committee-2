@@ -134,16 +134,22 @@ export class ArticleController {
   // 複数記事削除
   async deleteMany(req: Request, res: Response): Promise<void> {
     try {
+      console.log("🗑️ DELETE /api/articles - 複数記事削除開始");
       const { ids } = req.body;
+      console.log("🗑️ 削除対象IDs:", ids);
+      
       if (!ids || !Array.isArray(ids)) {
+        console.log("❌ 無効なリクエスト: ids array is required");
         res.status(400).json({ error: "ids array is required" });
         return;
       }
 
+      console.log(`🗑️ ${ids.length}件の記事を削除中...`);
       await articleService.deleteMany(ids);
+      console.log("✅ 記事削除完了");
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting articles:", error);
+      console.error("❌ 記事削除エラー:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }

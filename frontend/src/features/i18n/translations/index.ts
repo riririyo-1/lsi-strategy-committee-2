@@ -43,12 +43,7 @@ const fallbackTranslations: Translation = {
 // クライアントサイド: fetchで取得
 export async function getTranslation(locale: Locale): Promise<Translation> {
   try {
-    const res = await fetch(`/locales/${locale}.json`, {
-      cache: 'no-cache',
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    });
+    const res = await fetch(`/locales/${locale}.json`);
     if (!res.ok) {
       console.warn(`Translation file for ${locale} not found, using fallback`);
       return fallbackTranslations;
