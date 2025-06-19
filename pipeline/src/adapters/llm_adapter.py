@@ -128,15 +128,13 @@ class OpenAILLMAdapter(LLMInterface):
 記事: {article_text}
 
 可能なカテゴリ：
-- 技術動向
-- 市場動向
-- 企業動向
-- 政策・規制
-- 投資・M&A
-- 人材・組織
-- その他
+- 政治
+- 経済
+- 社会
+- 技術
 
-出力形式はJSON配列で：["カテゴリ1", "カテゴリ2"]
+出力形式はJSON配列で：["カテゴリ1"]
+(注意：必ず1つのカテゴリのみを選択してください)
 """
                     }
                 ],
@@ -151,7 +149,7 @@ class OpenAILLMAdapter(LLMInterface):
             
         except Exception as e:
             print(f"[ERROR] OpenAI API error: {e}")
-            return ["その他"]
+            return ["技術"]
     
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
     def generate_monthly_summary(self, articles: List[str]) -> str:
@@ -285,9 +283,9 @@ class OllamaLLMAdapter(LLMInterface):
 
 記事: {article_text}
 
-可能なカテゴリ：技術動向, 市場動向, 企業動向, 政策・規制, 投資・M&A, 人材・組織, その他
+可能なカテゴリ：政治, 経済, 社会, 技術
 
-カテゴリ: [選択したカテゴリをカンマ区切りで]
+カテゴリ: [選択したカテゴリを1つ]
 """
         try:
             response = self._call_ollama(prompt)
@@ -296,11 +294,11 @@ class OllamaLLMAdapter(LLMInterface):
                     categories_text = line.replace("カテゴリ:", "").strip()
                     return [cat.strip() for cat in categories_text.split(',') if cat.strip()]
             
-            return ["その他"]
+            return ["技術"]
             
         except Exception as e:
             print(f"[ERROR] Ollama category generation: {e}")
-            return ["その他"]
+            return ["技術"]
     
     def generate_monthly_summary(self, articles: List[str]) -> str:
         """月次まとめ生成"""
@@ -333,7 +331,7 @@ class DummyLLMAdapter(LLMInterface):
         return "ダミー要約"
     
     def generate_categories(self, article_text: str) -> List[str]:
-        return ["技術動向"]
+        return ["技術"]
     
     def generate_monthly_summary(self, articles: List[str]) -> str:
         return "ダミー月次まとめ"

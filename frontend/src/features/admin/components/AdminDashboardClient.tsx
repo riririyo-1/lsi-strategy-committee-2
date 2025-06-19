@@ -1,8 +1,8 @@
 "use client";
 
 import { useI18n } from "@/features/i18n/hooks/useI18n";
-import { PageLayout } from "@/components/common/PageLayout";
-import { Card, CardAction } from "@/components/common/Card";
+import { PageLayout } from "@/components/layouts/PageLayout";
+import { Card, CardAction } from "@/components/ui/Card";
 
 interface AdminMenuItem {
   title: string;

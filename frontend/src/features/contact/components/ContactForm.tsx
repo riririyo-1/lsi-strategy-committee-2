@@ -5,7 +5,7 @@ import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { useContactForm } from "../hooks/useContactForm";
 import { FormField } from "./FormField";
 import { SuccessMessage } from "./SuccessMessage";
-import { Button } from "@/components/common/Button";
+import { Button } from "@/components/ui/Button";
 
 export const ContactForm: React.FC = () => {
   const { t } = useI18n();

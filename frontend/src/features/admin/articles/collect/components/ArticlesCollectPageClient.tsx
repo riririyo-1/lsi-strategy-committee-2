@@ -8,11 +8,12 @@ import ArticleTable from "@/features/articles/components/ArticleTable";
 import { articlesApi } from "@/lib/apiClient";
 import ArticleManagementTab from "./ArticleManagementTab";
 import ScheduleSettingsTab from "@/features/admin/schedules/components/ScheduleSettingsTab";
-import { PageLayout } from "@/components/common/PageLayout";
-import { Button } from "@/components/common/Button";
-import { Tabs, TabItem } from "@/components/common/Tabs";
-import DatePicker from "@/components/common/DatePicker";
+import { PageLayout } from "@/components/layouts/PageLayout";
+import { Button } from "@/components/ui/Button";
+import { Tabs, TabItem } from "@/components/ui/Tabs";
+import DatePicker from "@/components/ui/DatePicker";
 import { ThemeText, ThemeLabel, ThemeInput, ThemeAlert } from "@/features/theme";
+import { RSS_SOURCES, RSS_SOURCES_BY_CATEGORY, SOURCE_ID_TO_NAME } from "@/constants/rssSources";
 
 // RSS収集用のコンポーネント
 function RSSCollectionTab() {
@@ -31,14 +32,40 @@ function RSSCollectionTab() {
   const [isCollecting, setIsCollecting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const sources = ["ITmedia", "NHK", "EE Times Japan", "マイナビ"];
+  // RSS Sourcesを定数から読み込み
+  const rssSources = RSS_SOURCES;
+  const sourcesByCategory = RSS_SOURCES_BY_CATEGORY;
 
-  const handleSourceChange = (source: string) => {
+  const handleSourceChange = (sourceId: string) => {
     setSelectedSources((prev) =>
-      prev.includes(source)
-        ? prev.filter((s) => s !== source)
-        : [...prev, source]
+      prev.includes(sourceId)
+        ? prev.filter((s) => s !== sourceId)
+        : [...prev, sourceId]
     );
+  };
+
+  // カテゴリ内の全ソースを選択/解除
+  const handleCategoryToggle = (category: string) => {
+    const categorySourceIds = sourcesByCategory[category].map(s => s.id);
+    const allSelected = categorySourceIds.every(id => selectedSources.includes(id));
+    
+    if (allSelected) {
+      // 全て選択済みの場合は解除
+      setSelectedSources(prev => prev.filter(id => !categorySourceIds.includes(id)));
+    } else {
+      // 一部または未選択の場合は全て選択
+      setSelectedSources(prev => [...new Set([...prev, ...categorySourceIds])]);
+    }
+  };
+
+  // 全て選択/解除
+  const handleSelectAll = () => {
+    const allSourceIds = rssSources.map(s => s.id);
+    if (selectedSources.length === allSourceIds.length) {
+      setSelectedSources([]);
+    } else {
+      setSelectedSources(allSourceIds);
+    }
   };
 
   const handleCollection = async () => {
@@ -51,6 +78,7 @@ function RSSCollectionTab() {
       });
 
       // 実際のRSS収集APIを呼び出し
+      // ソースIDをそのまま送信（pipeline側でIDからURLへのマッピングを行う）
       const response = await articlesApi.collectRSS({
         sources: selectedSources,
         startDate,
@@ -69,9 +97,25 @@ function RSSCollectionTab() {
 
           // 選択したソースの記事のみをフィルタリング
           const filteredArticles = allArticles
-            .filter((article: Article) =>
-              selectedSources.includes(article.source)
-            )
+            .filter((article: Article) => {
+              // 記事のsourceがselectedSourcesのIDまたは名前に含まれているかチェック
+              return selectedSources.some(selectedId => {
+                const sourceName = SOURCE_ID_TO_NAME[selectedId];
+                // 大文字小文字を無視して比較し、部分一致も許可
+                const articleSourceLower = article.source.toLowerCase();
+                const sourceNameLower = sourceName.toLowerCase();
+                const selectedIdLower = selectedId.toLowerCase();
+                
+                return (
+                  article.source === sourceName || 
+                  article.source === selectedId ||
+                  articleSourceLower === sourceNameLower ||
+                  articleSourceLower === selectedIdLower ||
+                  articleSourceLower.includes(sourceNameLower) ||
+                  articleSourceLower.includes(selectedIdLower)
+                );
+              });
+            })
             .sort(
               (a: Article, b: Article) =>
                 new Date(b.publishedAt).getTime() -
@@ -185,24 +229,73 @@ function RSSCollectionTab() {
         </div>
 
         <div className="mb-6">
-          <ThemeLabel>
-            {t("articles.collect.selectSources")}
-          </ThemeLabel>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {sources.map((source) => (
-              <label
-                key={source}
-                className="flex items-center text-sm"
+          <div className="flex justify-between items-center mb-4">
+            <ThemeLabel>
+              {t("articles.collect.selectSources")} ({selectedSources.length} / {rssSources.length} 選択中)
+            </ThemeLabel>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSelectAll}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"
               >
-                <input
-                  type="checkbox"
-                  checked={selectedSources.includes(source)}
-                  onChange={() => handleSourceChange(source)}
-                  className="mr-2 rounded"
-                />
-                <ThemeText variant="secondary">{source}</ThemeText>
-              </label>
-            ))}
+                {selectedSources.length === rssSources.length ? '全て解除' : '全て選択'}
+              </button>
+            </div>
+          </div>
+          
+          {/* カテゴリ別にソースを表示 */}
+          <div className="space-y-6">
+            {Object.entries(sourcesByCategory).map(([category, sources]) => {
+              const categorySourceIds = sources.map(s => s.id);
+              const selectedInCategory = categorySourceIds.filter(id => selectedSources.includes(id)).length;
+              const allCategorySelected = selectedInCategory === categorySourceIds.length;
+              const partiallySelected = selectedInCategory > 0 && selectedInCategory < categorySourceIds.length;
+              
+              return (
+                <div key={category} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                      {category} ({selectedInCategory}/{categorySourceIds.length})
+                    </h4>
+                    <button
+                      onClick={() => handleCategoryToggle(category)}
+                      className={`px-3 py-1 text-xs border rounded-md transition-colors ${
+                        allCategorySelected
+                          ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          : partiallySelected
+                          ? 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {allCategorySelected ? '全て解除' : '全て選択'}
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {sources.map((source) => (
+                      <button
+                        key={source.id}
+                        onClick={() => handleSourceChange(source.id)}
+                        className={`
+                          relative px-3 py-2 rounded-lg border transition-all duration-200 
+                          text-xs font-medium min-h-[40px] flex items-center justify-center
+                          ${selectedSources.includes(source.id)
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-400 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-gray-500 dark:hover:bg-gray-700'
+                          }
+                          hover:shadow-sm active:scale-[0.98]
+                        `}
+                      >
+                        {selectedSources.includes(source.id) && (
+                          <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-500 rounded-full dark:bg-blue-400"></div>
+                        )}
+                        <span className="text-center leading-tight">{source.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

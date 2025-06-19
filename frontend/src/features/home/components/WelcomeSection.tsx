@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/features/i18n/hooks/useI18n";
-import { Button } from "@/components/common/Button";
+import { Button } from "@/components/ui/Button";
 
 const WelcomeSection = () => {
   const { t } = useI18n();

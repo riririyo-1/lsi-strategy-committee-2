@@ -126,7 +126,7 @@ async def categorize_articles(request: LLMCategorizeRequest):
     記事のカテゴリ自動分類
     
     記事の内容からカテゴリを自動分類します。
-    カテゴリ: 技術動向、市場動向、企業動向、政策・規制、投資・M&A、人材・組織、その他
+    カテゴリ: 政治、経済、社会、技術
     """
     try:
         if request.article_ids:
@@ -202,13 +202,10 @@ async def categorize_topics_articles(request: TopicsCategorizationRequest):
             raise HTTPException(status_code=404, detail="No valid articles found")
         
         categorized_articles = {
-            "技術動向": [],
-            "市場動向": [],
-            "企業動向": [],
-            "政策・規制": [],
-            "投資・M&A": [],
-            "人材・組織": [],
-            "その他": []
+            "政治": [],
+            "経済": [],
+            "社会": [],
+            "技術": []
         }
         
         processed_articles = []
@@ -222,33 +219,8 @@ async def categorize_topics_articles(request: TopicsCategorizationRequest):
                     # 階層的カテゴリ分類（大カテゴリ→小カテゴリ）
                     primary_categories = llm_adapter.generate_categories(content)
                     
-                    # LLMで詳細な小カテゴリも生成
-                    subcategory_prompt = f"""
-以下の記事を詳細な小カテゴリに分類してください。
-
-記事: {content[:1000]}
-
-大カテゴリ: {primary_categories}
-
-小カテゴリの例:
-- 技術動向: プロセッサー技術、メモリ技術、AI/ML技術、製造プロセス
-- 市場動向: 需要予測、価格動向、地域別市場、アプリケーション別
-- 企業動向: 新製品発表、提携・買収、人事異動、業績発表
-
-小カテゴリ（1-3個）をJSON配列で出力: ["カテゴリ1", "カテゴリ2"]
-"""
-                    try:
-                        # 簡易的な小カテゴリ推定（実装を簡素化）
-                        if "プロセッサ" in content or "CPU" in content:
-                            subcategories = ["プロセッサー技術"]
-                        elif "メモリ" in content or "DRAM" in content:
-                            subcategories = ["メモリ技術"]
-                        elif "AI" in content or "機械学習" in content:
-                            subcategories = ["AI/ML技術"]
-                        else:
-                            subcategories = ["一般技術"]
-                    except:
-                        subcategories = ["未分類"]
+                    # 新4カテゴリシステムでは小カテゴリは使用しない
+                    subcategories = []
                     
                 else:
                     # テーマ別カテゴリ分類
@@ -261,30 +233,30 @@ async def categorize_topics_articles(request: TopicsCategorizationRequest):
                     "title": article.get("title", ""),
                     "primary_categories": primary_categories,
                     "subcategories": subcategories,
-                    "suggested_section": primary_categories[0] if primary_categories else "その他"
+                    "suggested_section": primary_categories[0] if primary_categories else "技術"
                 }
                 
                 processed_articles.append(article_result)
                 
                 # カテゴリ別にグループ化
-                main_category = primary_categories[0] if primary_categories else "その他"
+                main_category = primary_categories[0] if primary_categories else "技術"
                 if main_category in categorized_articles:
                     categorized_articles[main_category].append(article_result)
                 else:
-                    categorized_articles["その他"].append(article_result)
+                    categorized_articles["技術"].append(article_result)
                     
             except Exception as e:
-                # エラーが発生した記事はその他に分類
+                # エラーが発生した記事は技術に分類
                 error_result = {
                     "id": article.get("id"),
                     "title": article.get("title", ""),
-                    "primary_categories": ["その他"],
+                    "primary_categories": ["技術"],
                     "subcategories": [],
                     "error": str(e),
-                    "suggested_section": "その他"
+                    "suggested_section": "技術"
                 }
                 processed_articles.append(error_result)
-                categorized_articles["その他"].append(error_result)
+                categorized_articles["技術"].append(error_result)
         
         # カテゴリ別統計
         category_stats = {}
@@ -300,7 +272,7 @@ async def categorize_topics_articles(request: TopicsCategorizationRequest):
             "category_stats": category_stats,
             "suggested_structure": {
                 "main_sections": [cat for cat, count in category_stats.items() if count > 0],
-                "recommended_order": ["技術動向", "市場動向", "企業動向", "政策・規制", "投資・M&A", "人材・組織", "その他"]
+                "recommended_order": ["政治", "経済", "社会", "技術"]
             }
         }
         

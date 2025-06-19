@@ -4,7 +4,7 @@ import React from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { ContactForm } from "./ContactForm";
 
-export const ContactPageClient: React.FC = () => {
+const ContactPageClient: React.FC = () => {
   const { t } = useI18n();
 
   return (
@@ -20,3 +20,5 @@ export const ContactPageClient: React.FC = () => {
     </>
   );
 };
+
+export default ContactPageClient;

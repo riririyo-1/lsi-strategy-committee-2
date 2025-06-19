@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { TrendReport } from "@/types/trendReport";
-import { FileUploader, DatePicker, Button } from "@/components/common";
+import { FileUploader } from "@/components/common";
+import { DatePicker, Button } from "@/components/ui";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 
 interface ResearchReportFormProps {

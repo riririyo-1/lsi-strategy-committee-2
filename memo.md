@@ -40,51 +40,15 @@ docker compose exec frontend npx prisma db seed
 
 ブラウザで `http://localhost:3000` にアクセスすると、アプリケーションが表示されます。
 
-## 3. ローカル環境での開発 (Docker 不使用)
-
-### セットアップ手順
-
-1. 依存パッケージのインストール
+## コマンド
 
 ```bash
-npm install --legacy-peer-deps
+# 各サービスをバックグラウンドで起動
+docker compose up --build -d db
+docker compose up --build -d server
+docker compose up --build -d frontend
+docker compose up --build -d pipeline
 ```
-
-2. 環境変数の設定
-
-```bash
-cp .env.example .env
-# .envファイルを編集し、DATABASE_URLなどの設定を変更
-```
-
-3. データベースの設定
-
-```bash
-# PostgreSQLが起動していることを確認
-# データベース作成
-createdb lsi_strategy
-
-# Prismaマイグレーションの実行
-npx prisma migrate deploy
-# または開発環境用
-npx prisma migrate dev
-
-# Prismaクライアントの生成
-npx prisma generate
-
-# シードデータの投入
-npx prisma db seed
-```
-
-4. 開発サーバーの起動
-
-```bash
-npm run dev
-```
-
-5. アプリケーションへのアクセス
-
-ブラウザで `http://localhost:3000` にアクセスすると、アプリケーションが表示されます。
 
 ## 使いたいライブラリ
 
@@ -94,7 +58,7 @@ npm run dev
 ## 追加したいものしたいもの
 
 - [ ] メンバー紹介欄の作成
-- [ ] ファブのキャパシティ推測などの管理
+- [ ] ファブのキャパシティ推測などの統計
 - [ ] ログの収集
 
 ---

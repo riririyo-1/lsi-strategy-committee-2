@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useI18n } from "@/features/i18n/hooks/useI18n";
-import DatePicker from "./DatePicker";
-import { Button } from "./Button";
+import DatePicker from "@/components/ui/DatePicker";
+import { Button } from "@/components/ui/Button";
+import { ChevronDown } from "lucide-react";
 
 export interface ArticleSearchFilters {
   startDate: string;
@@ -11,6 +11,7 @@ export interface ArticleSearchFilters {
   labelTags: string[];
   searchQuery: string;
   sourceFilter: string;
+  quickFilter?: string;
 }
 
 interface ArticleSearchFiltersProps {
@@ -20,24 +21,37 @@ interface ArticleSearchFiltersProps {
   className?: string;
 }
 
+// よく使うラベル
+const QUICK_FILTERS = [
+  { id: "all", label: "すべて" },
+  { id: "semiconductor", label: "半導体" },
+  { id: "sony", label: "ソニー" },
+  { id: "smartphone", label: "スマートフォン" },
+  { id: "camera", label: "カメラ" },
+  { id: "usa", label: "アメリカ" },
+  { id: "japan", label: "日本" },
+];
+
 export default function ArticleSearchFilters({
   onSearch,
   onClear,
   appliedFilters,
-  className = ""
+  className = "",
 }: ArticleSearchFiltersProps) {
-  const { t } = useI18n();
-  
   // フィルター入力状態
+  const [searchQuery, setSearchQuery] = useState("");
+  const [quickFilter, setQuickFilter] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [labelTags, setLabelTags] = useState<string[]>([]);
   const [labelInput, setLabelInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
 
-  const handleLabelKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && labelInput.trim()) {
+  // 詳細フィルターの開閉状態
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  const handleLabelKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && labelInput.trim()) {
       e.preventDefault();
       if (!labelTags.includes(labelInput.trim())) {
         setLabelTags([...labelTags, labelInput.trim()]);
@@ -47,17 +61,51 @@ export default function ArticleSearchFilters({
   };
 
   const removeLabel = (labelToRemove: string) => {
-    setLabelTags(labelTags.filter(label => label !== labelToRemove));
+    setLabelTags(labelTags.filter((label) => label !== labelToRemove));
   };
 
-  const handleSearch = () => {
+  const handleQuickFilterChange = (filterId: string) => {
+    setQuickFilter(filterId);
+    // クイックフィルターが変更されたら即座に検索
+    const filterLabels =
+      filterId === "all"
+        ? []
+        : [QUICK_FILTERS.find((f) => f.id === filterId)?.label || ""];
     onSearch({
       startDate,
       endDate,
-      labelTags: [...labelTags],
+      labelTags: filterLabels,
       searchQuery,
-      sourceFilter
+      sourceFilter,
+      quickFilter: filterId,
     });
+  };
+
+  const handleSearch = () => {
+    const filterLabels =
+      quickFilter === "all"
+        ? labelTags
+        : [
+            ...(quickFilter
+              ? [QUICK_FILTERS.find((f) => f.id === quickFilter)?.label || ""]
+              : []),
+            ...labelTags,
+          ];
+
+    onSearch({
+      startDate,
+      endDate,
+      labelTags: filterLabels,
+      searchQuery,
+      sourceFilter,
+      quickFilter,
+    });
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
   };
 
   const handleClear = () => {
@@ -67,240 +115,244 @@ export default function ArticleSearchFilters({
     setLabelInput("");
     setSearchQuery("");
     setSourceFilter("");
+    setQuickFilter("all");
+    setIsAdvancedOpen(false);
     onClear();
   };
 
-  const hasAnyFilter = () => {
-    return startDate || endDate || labelTags.length > 0 || searchQuery || sourceFilter;
-  };
-
   const hasAppliedFilters = () => {
-    return appliedFilters && (
-      appliedFilters.startDate || 
-      appliedFilters.endDate || 
-      appliedFilters.labelTags.length > 0 || 
-      appliedFilters.searchQuery || 
-      appliedFilters.sourceFilter
+    return (
+      appliedFilters &&
+      (appliedFilters.startDate ||
+        appliedFilters.endDate ||
+        appliedFilters.labelTags.length > 0 ||
+        appliedFilters.searchQuery ||
+        appliedFilters.sourceFilter ||
+        (appliedFilters.quickFilter && appliedFilters.quickFilter !== "all"))
     );
   };
 
   return (
-    <div className={`bg-white/80 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg ${className}`}>
-      <div className="p-6 space-y-6">
-        {/* ヘッダー */}
-        <div className="flex items-center space-x-3">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">記事検索フィルター</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">条件を設定して記事を絞り込み</p>
-          </div>
-        </div>
-
-        {/* 日付範囲検索 */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">日付範囲</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 ml-1">
-                開始日
-              </label>
-              <DatePicker
-                selected={startDate ? new Date(startDate) : undefined}
-                onSelect={(date) => setStartDate(date.toISOString().split("T")[0])}
-                placeholder="開始日を選択"
-                className="w-full"
-              />
-            </div>
-            <div className="relative">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 ml-1">
-                終了日
-              </label>
-              <DatePicker
-                selected={endDate ? new Date(endDate) : undefined}
-                onSelect={(date) => setEndDate(date.toISOString().split("T")[0])}
-                placeholder="終了日を選択"
-                className="w-full"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ラベル検索 */}
-        <div className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">ラベル検索</span>
-          </div>
-          <div className="relative">
+    <div
+      className={`bg-white/90 dark:bg-gray-800/90 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}
+    >
+      <div className="p-4 space-y-4">
+        {/* シンプルな検索バー */}
+        <div className="flex gap-3">
+          <div className="flex-1 relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              <svg
+                className="w-5 h-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
             <input
               type="text"
-              value={labelInput}
-              onChange={(e) => setLabelInput(e.target.value)}
-              onKeyPress={handleLabelKeyPress}
-              placeholder="ラベルを入力してEnterキー"
-              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 placeholder-gray-400"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="記事を検索..."
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 placeholder-gray-500"
             />
           </div>
-          {labelTags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {labelTags.map((label) => (
-                <span
-                  key={label}
-                  className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700/30"
-                >
-                  {label}
-                  <button
-                    type="button"
-                    onClick={() => removeLabel(label)}
-                    className="ml-2 hover:text-purple-600 dark:hover:text-purple-300 transition-colors"
-                  >
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* キーワード・ソース検索 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">キーワード</span>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="タイトル・要約で検索"
-                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 placeholder-gray-400"
-              />
-            </div>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-              </svg>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">ソース</span>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-                placeholder="記事ソースで検索"
-                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 placeholder-gray-400"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 適用中の検索条件表示 */}
-        {hasAppliedFilters() && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <div className="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span className="text-sm font-medium text-blue-800 dark:text-blue-200">適用中の検索条件</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-              {(appliedFilters!.startDate || appliedFilters!.endDate) && (
-                <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span>日付: {appliedFilters!.startDate || "指定なし"} ～ {appliedFilters!.endDate || "指定なし"}</span>
-                </div>
-              )}
-              {appliedFilters!.searchQuery && (
-                <div className="flex items-center space-x-2 text-green-700 dark:text-green-300">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span>キーワード: {appliedFilters!.searchQuery}</span>
-                </div>
-              )}
-              {appliedFilters!.sourceFilter && (
-                <div className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                  </svg>
-                  <span>ソース: {appliedFilters!.sourceFilter}</span>
-                </div>
-              )}
-              {appliedFilters!.labelTags.length > 0 && (
-                <div className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 md:col-span-2">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
-                  <span>ラベル: {appliedFilters!.labelTags.join(", ")}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* 検索ボタン */}
-        <div className="flex gap-3 pt-2">
           <Button
             onClick={handleSearch}
             variant="primary"
             size="sm"
-            disabled={!hasAnyFilter()}
-            className="flex-1"
+            className="px-6"
           >
-            <div className="flex items-center justify-center space-x-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span>検索実行</span>
-            </div>
+            検索
           </Button>
-          <Button
-            onClick={handleClear}
-            variant="secondary"
-            size="sm"
-            disabled={!hasAppliedFilters()}
-            className=""
+        </div>
+
+        {/* クイックフィルター */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {QUICK_FILTERS.map((filter) => (
+            <button
+              key={filter.id}
+              onClick={() => handleQuickFilterChange(filter.id)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                quickFilter === filter.id
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 詳細フィルターボタン */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+            className={`
+              group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+              transition-all duration-200 
+              ${
+                isAdvancedOpen
+                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                  : "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+              }
+            `}
           >
-            <div className="flex items-center justify-center space-x-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+              />
+            </svg>
+            <span>詳細フィルター</span>
+            <div
+              className={`ml-1 transition-transform duration-200 ${
+                isAdvancedOpen ? "rotate-180" : ""
+              }`}
+            >
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </button>
+
+          {hasAppliedFilters() && (
+            <button
+              onClick={handleClear}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
               <span>クリア</span>
+            </button>
+          )}
+        </div>
+
+        {/* 詳細フィルター（展開時） */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ${
+            isAdvancedOpen ? "max-h-96" : "max-h-0"
+          }`}
+        >
+          <div className="pt-4 space-y-4 border-t border-gray-200 dark:border-gray-700">
+            {/* 日付範囲 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                日付範囲
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <DatePicker
+                  selected={startDate ? new Date(startDate) : undefined}
+                  onSelect={(date) =>
+                    setStartDate(date.toISOString().split("T")[0])
+                  }
+                  placeholder="開始日"
+                  className="w-full"
+                />
+                <DatePicker
+                  selected={endDate ? new Date(endDate) : undefined}
+                  onSelect={(date) =>
+                    setEndDate(date.toISOString().split("T")[0])
+                  }
+                  placeholder="終了日"
+                  className="w-full"
+                />
+              </div>
             </div>
-          </Button>
+
+            {/* ラベル */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                ラベル
+              </label>
+              <input
+                type="text"
+                value={labelInput}
+                onChange={(e) => setLabelInput(e.target.value)}
+                onKeyDown={handleLabelKeyDown}
+                placeholder="ラベルを入力してEnterキー"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200"
+              />
+              {labelTags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {labelTags.map((label) => (
+                    <span
+                      key={label}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200"
+                    >
+                      {label}
+                      <button
+                        type="button"
+                        onClick={() => removeLabel(label)}
+                        className="ml-2 hover:text-blue-600 dark:hover:text-blue-300"
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ソース */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                ソース
+              </label>
+              <input
+                type="text"
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                placeholder="記事ソースを入力"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-200 rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200"
+              />
+            </div>
+
+            {/* 詳細検索ボタン */}
+            <div className="pt-2">
+              <Button
+                onClick={handleSearch}
+                variant="primary"
+                size="sm"
+                className="w-full"
+              >
+                詳細条件で検索
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

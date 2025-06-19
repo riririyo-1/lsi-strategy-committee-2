@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import ArticleDetail from "@/features/articles/components/ArticleDetail";
-import PageWithBackground from "@/components/common/PageWithBackground";
+import PageWithBackground from "@/components/layouts/PageWithBackground";
 import { notFound } from "next/navigation";
 
 interface ArticleDetailPageProps {

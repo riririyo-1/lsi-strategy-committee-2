@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
-import SearchBar from "./SearchBar";
-import ViewToggle from "./ViewToggle";
+import SearchBar from "@/components/ui/SearchBar";
+import ViewToggle from "@/components/ui/ViewToggle";
 import ArticleTable from "./ArticleTable";
 import ArticleCardGrid from "./ArticleCardGrid";
 import { Article } from "@/types/article";
@@ -58,7 +58,7 @@ export default function ArticlesFeature({
 
   return (
     <div
-      className="min-h-screen bg-gray-100 dark:bg-[#181e29] py-20 md:py-40 px-4"
+      className="bg-gray-100 dark:bg-[#181e29] py-20 md:py-40 px-4"
       suppressHydrationWarning
     >
       <div className="max-w-7xl mx-auto">

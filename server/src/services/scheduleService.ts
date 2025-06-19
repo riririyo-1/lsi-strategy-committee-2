@@ -173,15 +173,20 @@ export class ScheduleService {
       case "weekly":
         if (schedule.dayOfWeek !== undefined && schedule.time) {
           const [hours, minutes] = schedule.time.split(':').map(Number);
-          const daysUntilTarget = (schedule.dayOfWeek - now.getDay() + 7) % 7;
+          let daysUntilTarget = (schedule.dayOfWeek - now.getDay() + 7) % 7;
+          
+          // 今日が指定曜日の場合、時刻をチェックして次週にするかどうか決める
+          if (daysUntilTarget === 0) {
+            const todayScheduleTime = new Date(now);
+            todayScheduleTime.setHours(hours, minutes, 0, 0);
+            
+            if (todayScheduleTime <= now) {
+              daysUntilTarget = 7; // 来週の同じ曜日に設定
+            }
+          }
           
           nextRun.setDate(now.getDate() + daysUntilTarget);
           nextRun.setHours(hours, minutes, 0, 0);
-          
-          // 今週の指定時刻が過ぎている場合は来週に設定
-          if (nextRun <= now) {
-            nextRun.setDate(nextRun.getDate() + 7);
-          }
         }
         break;
 
@@ -189,12 +194,27 @@ export class ScheduleService {
         if (schedule.dayOfMonth !== undefined && schedule.time) {
           const [hours, minutes] = schedule.time.split(':').map(Number);
           
-          nextRun.setDate(schedule.dayOfMonth);
-          nextRun.setHours(hours, minutes, 0, 0);
+          // 今月の指定日を試行
+          let targetMonth = now.getMonth();
+          let targetYear = now.getFullYear();
           
-          // 今月の指定日時が過ぎている場合は来月に設定
-          if (nextRun <= now) {
-            nextRun.setMonth(nextRun.getMonth() + 1);
+          // 今月の指定日時を計算
+          const thisMonthTarget = new Date(targetYear, targetMonth, schedule.dayOfMonth, hours, minutes, 0, 0);
+          
+          // 今月の指定日時が過ぎているか、存在しない日付の場合は来月に設定
+          if (thisMonthTarget <= now || thisMonthTarget.getDate() !== schedule.dayOfMonth) {
+            targetMonth += 1;
+            if (targetMonth > 11) {
+              targetMonth = 0;
+              targetYear += 1;
+            }
+          }
+          
+          // 来月でも指定日が存在しない場合は、その月の最終日に設定
+          nextRun = new Date(targetYear, targetMonth, schedule.dayOfMonth, hours, minutes, 0, 0);
+          if (nextRun.getDate() !== schedule.dayOfMonth) {
+            // 指定日が存在しない場合（例：2月31日）、その月の最終日に設定
+            nextRun = new Date(targetYear, targetMonth + 1, 0, hours, minutes, 0, 0);
           }
         }
         break;
@@ -316,7 +336,9 @@ export class ScheduleService {
         task: "rss_collection",
         sources: config.sources,
         daysToCollect: config.daysToCollect,
-        articlesCollected: result.articlesCollected || 0,
+        articlesCollected: result.insertedCount || 0,
+        articlesFound: result.insertedCount + result.skippedCount || 0,
+        articlesSkipped: result.skippedCount || 0,
         pipelineResponse: result,
         executedAt: new Date().toISOString()
       };

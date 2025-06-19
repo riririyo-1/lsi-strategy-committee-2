@@ -269,6 +269,7 @@
       "batchAutoCategories": "一括自動分類",
       "categorizing": "分類中...",
       "uncategorized": "未分類",
+      "category": "カテゴリ",
       "mainCategory": "大カテゴリ",
       "subCategory": "小カテゴリ",
       "selectCategory": "カテゴリを選択",
@@ -286,6 +287,10 @@
       "preview": "プレビュー",
       "selectPublishDate": "公開日を選択",
       "searchResultCount": "{count}件の検索結果",
+      "allArticles": "すべて",
+      "selectedArticlesCount": "選択済み記事: {count}件",
+      "addToList": "リストに追加",
+      "added": "追加済み",
       "export": "エクスポート",
       "exportFormat": "エクスポート形式",
       "exporting": "エクスポート中...",
@@ -300,24 +305,10 @@
     }
   },
   "categories": {
-    "main": {
-      "political": "政治",
-      "economical": "経済",
-      "social": "社会",
-      "technological": "技術"
-    },
-    "sub": {
-      "government_initiatives": "国の取り組み",
-      "ma": "M&A",
-      "production_tech": "生産技術",
-      "advanced_tech": "先端技術",
-      "social_trends": "世の中の動き",
-      "market_trends": "市場動向",
-      "research_development": "研究開発",
-      "supply_chain": "サプライチェーン",
-      "environmental": "環境・サステナビリティ",
-      "others": "その他"
-    },
+    "political": "政治",
+    "economical": "経済",
+    "social": "社会",
+    "technological": "技術",
     "uncategorized": "未分類"
   }
 }

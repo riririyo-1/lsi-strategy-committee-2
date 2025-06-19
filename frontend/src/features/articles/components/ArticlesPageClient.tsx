@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
-import { ViewToggle } from "@/components/common";
+import { ViewToggle } from "@/components/ui";
 import ArticleTable from "./ArticleTable";
 import ArticleCardGrid from "./ArticleCardGrid";
-import Pagination from "@/components/common/Pagination";
+import Pagination from "@/components/ui/Pagination";
 import { ArticleSearchFilters } from "@/components/common";
 import type { ArticleSearchFiltersType } from "@/components/common";
 import { Article } from "@/types/article";

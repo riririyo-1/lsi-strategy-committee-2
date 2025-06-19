@@ -6,7 +6,7 @@ import { ResearchReportService } from "@/features/admin/services/ResearchReportS
 import ReportCard from "./ReportCard";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { PageLayout } from "@/components/common/PageLayout";
+import { PageLayout } from "@/components/layouts/PageLayout";
 
 const ResearchPageClient = () => {
   // i18n機能を使用

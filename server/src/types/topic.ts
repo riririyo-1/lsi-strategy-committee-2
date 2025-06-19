@@ -16,7 +16,7 @@ export interface CreateTopicDto {
   publishDate?: string;
   content?: string;
   articles?: string[];
-  categories?: { [articleId: string]: { main: string; sub: string[] } };
+  categories?: { [articleId: string]: { main: string } };
 }
 
 export interface UpdateTopicDto {
@@ -25,12 +25,11 @@ export interface UpdateTopicDto {
   publishDate?: string;
   content?: string;
   articles?: string[];
-  categories?: { [articleId: string]: { main: string; sub: string[] } };
+  categories?: { [articleId: string]: { main: string } };
 }
 
 export interface UpdateArticleCategoryDto {
   main: string;
-  sub?: string[];
 }
 
 export interface CategorizeDto {
@@ -47,6 +46,6 @@ export interface TopicStore {
   id: string;
   title: string;
   articles: any[];
-  categories: { [article_id: string]: { main: string; sub: string[] } };
+  categories: { [article_id: string]: { main: string } };
   template_html?: string;
 }

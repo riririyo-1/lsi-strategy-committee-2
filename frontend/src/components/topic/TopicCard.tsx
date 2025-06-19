@@ -2,7 +2,7 @@
 
 import type { Topic, TopicCategory } from "@/types/topic.d";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
-import { Card, CardMetadata, CardAction } from "@/components/common/Card";
+import { Card, CardMetadata, CardAction } from "@/components/ui/Card";
 
 interface TopicCardProps {
   topic: Topic;

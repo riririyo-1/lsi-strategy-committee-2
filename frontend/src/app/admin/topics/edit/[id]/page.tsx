@@ -1,7 +1,7 @@
-"use client";
-
-import { use } from "react";
 import TopicsEditorClient from "@/features/admin/topics/components/TopicsEditorClient";
+import PageWithBackground from "@/components/layouts/PageWithBackground";
+
+// トピック編集
 
 interface TopicsEditPageProps {
   params: Promise<{
@@ -9,9 +9,13 @@ interface TopicsEditPageProps {
   }>;
 }
 
-export default function TopicsEditPage({ params }: TopicsEditPageProps) {
-  const resolvedParams = use(params);
+export default async function TopicsEditPage({ params }: TopicsEditPageProps) {
+  const resolvedParams = await params;
   const topicId = resolvedParams.id;
 
-  return <TopicsEditorClient mode="edit" topicId={topicId} />;
+  return (
+    <PageWithBackground>
+      <TopicsEditorClient mode="edit" topicId={topicId} />
+    </PageWithBackground>
+  );
 }

@@ -186,47 +186,69 @@ async def collect_rss(request: RSSCollectRequest):
     with open(feeds_file, 'r', encoding='utf-8') as f:
         feeds_config = yaml.safe_load(f)
     
-    # ソース名とURLのマッピングを構築（新しい形式に対応）
-    rss_urls = {}
+    # フロントエンドのIDをYAMLのキー（ソース名）にマッピング
+    id_to_source_name = {
+        "eetimes": "EE Times Japan",
+        "itmedia": "ITmedia", 
+        "nhk": "NHK",
+        "mynavi_techplus": "マイナビ Tech+",
+        "nikkei_xtech": "日経XTECH",
+        "gigazine": "GIGAZINE",
+        "semiconductor_today": "Semiconductor Today",
+        "science_potal": "Science Portal",
+        "wired_jp": "WIRED Japan",
+        "techcrunch": "TechCrunch",
+        "wired": "WIRED",
+        "the_verge": "The Verge",
+        "ars_technica": "Ars Technica",
+        "engadget": "Engadget",
+        "mit_technology_review": "MIT Technology Review",
+        "bloomberg": "Bloomberg",
+        "financial_times": "Financial Times",
+        "forbes": "Forbes",
+        "fortune": "Fortune",
+        "the_information": "The Information",
+        "new_york_times": "New York Times",
+        "the_guardian": "The Guardian",
+        "bbc": "BBC",
+        "cnbc": "CNBC",
+        "npr": "NPR",
+        "cbs_news": "CBS News"
+    }
     
-    # 各フィードカテゴリから複数URLを取得
-    for category, feeds in feeds_config.items():
-        if category == "eetimes":
-            # EE Times Japan
-            for feed in feeds:
-                rss_urls["EE Times Japan"] = feed["url"]
-                break  # 最初の1つを使用
-        elif category == "itmedia":
-            # ITmedia
-            for feed in feeds:
-                rss_urls["ITmedia"] = feed["url"]
-                break  # 最初の1つを使用
-        elif category == "nhk":
-            # NHK (複数フィードを統合)
-            nhk_urls = [feed["url"] for feed in feeds]
-            # 最初のNHKフィードをメインとして使用（複数フィード対応は後で実装）
-            rss_urls["NHK"] = nhk_urls[0]
-        elif category == "mynavi_techplus":
-            # マイナビ（複数フィードを統合）
-            mynavi_urls = [feed["url"] for feed in feeds]
-            # 最初のマイナビフィードをメインとして使用（複数フィード対応は後で実装）
-            rss_urls["マイナビ"] = mynavi_urls[0]
-    
-    print(f"RSS URLマッピング: {rss_urls}")
+    # 汎用的なソース処理
+    all_sources = feeds_config.get('sources', {})
     
     collected_articles = []
-    
-    # 各ソースから並列収集
     tasks = []
-    for source in request.sources:
-        if source in rss_urls:
-            task = collect_from_source(
-                source, 
-                rss_urls[source], 
-                request.startDate, 
-                request.endDate
-            )
-            tasks.append(task)
+    
+    print(f"[DEBUG] Available sources in YAML: {list(all_sources.keys())}")
+    
+    # リクエストされた各ソースについて処理
+    for requested_source_id in request.sources:
+        # IDをソース名に変換
+        source_name = id_to_source_name.get(requested_source_id, requested_source_id)
+        
+        print(f"[DEBUG] Processing: {requested_source_id} -> {source_name}")
+        
+        if source_name in all_sources:
+            source_config = all_sources[source_name]
+            feeds = source_config.get('feeds', [])
+            
+            print(f"[DEBUG] Found {len(feeds)} feeds for {source_name}")
+            
+            # 複数のフィードを並列で収集
+            for feed_info in feeds:
+                task = collect_from_source(
+                    source_name=source_name,
+                    rss_url=feed_info['url'],
+                    start_date=request.startDate,
+                    end_date=request.endDate,
+                    category=feed_info.get('category', 'general')  # カテゴリ情報は収集時のみ使用
+                )
+                tasks.append(task)
+        else:
+            print(f"[WARN] ソース '{requested_source_id}' (mapped to '{source_name}') が見つかりません")
     
     # 並列実行
     try:
@@ -301,10 +323,11 @@ async def collect_rss(request: RSSCollectRequest):
         print(f"RSS収集処理エラー: {e}")
         raise HTTPException(status_code=500, detail=f"RSS収集処理に失敗しました: {str(e)}")
 
-async def collect_from_source(source_name: str, rss_url: str, start_date: str, end_date: str):
-    """単一ソースからの記事収集"""
+
+async def collect_from_source(source_name: str, rss_url: str, start_date: str, end_date: str, category: str = "general"):
+    """単一ソースからの記事収集（カテゴリ情報は収集時のみ使用）"""
     try:
-        print(f"{source_name}: RSS取得開始 - {rss_url}")
+        print(f"{source_name} ({category}): RSS取得開始 - {rss_url}")
         timeout = aiohttp.ClientTimeout(total=15)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(rss_url) as response:
@@ -314,7 +337,7 @@ async def collect_from_source(source_name: str, rss_url: str, start_date: str, e
                 rss_content = await response.text()
         
         feed = feedparser.parse(rss_content)
-        print(f"{source_name}: フィード解析完了 - {len(feed.entries)}件のエントリー")
+        print(f"{source_name} ({category}): フィード解析完了 - {len(feed.entries)}件のエントリー")
         
         if not feed.entries:
             print(f"{source_name}: フィードが空です")
@@ -356,15 +379,7 @@ async def collect_from_source(source_name: str, rss_url: str, start_date: str, e
                     # 日付が解析できない場合は現在日時を使用
                     published_dt = datetime.now()
                 
-                # 日付フィルタリング（デバッグ情報付き）
-                if start_dt <= published_dt <= end_dt:
-                    print(f"  ✓ 日付範囲内: {published_dt} - {getattr(entry, 'title', 'タイトルなし')[:50]}")
-                else:
-                    # デバッグ用：日付範囲外の記事も最初の3件は表示
-                    if len(articles) < 3:
-                        print(f"  ✗ 日付範囲外: {published_dt} - {getattr(entry, 'title', 'タイトルなし')[:50]}")
-                
-                # 日付フィルタリング（元に戻す）
+                # 日付フィルタリング
                 if start_dt <= published_dt <= end_dt:
                     article_url = entry.link if hasattr(entry, 'link') else ""
                     article_title = entry.title.strip() if hasattr(entry, 'title') else "タイトル不明"
@@ -392,7 +407,7 @@ async def collect_from_source(source_name: str, rss_url: str, start_date: str, e
                     article = {
                         "title": article_title,
                         "articleUrl": article_url,
-                        "source": source_name,
+                        "source": source_name,  # カテゴリ情報はDBに保存しない
                         "publishedAt": published_dt.isoformat(),
                         "summary": summary,  # RSS要約のみ
                         "labels": [],  # 空配列（LLM処理は別途）
@@ -409,7 +424,7 @@ async def collect_from_source(source_name: str, rss_url: str, start_date: str, e
                 print(f"{source_name}のエントリ処理エラー: {entry_error}")
                 continue
         
-        print(f"{source_name}から{len(articles)}件収集")
+        print(f"{source_name} ({category})から{len(articles)}件収集")
         return articles
         
     except Exception as e:
@@ -442,5 +457,3 @@ def extract_thumbnail(entry):
         pass
     
     return None
-
-# ...existing code...

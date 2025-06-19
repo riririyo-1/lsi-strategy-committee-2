@@ -6,7 +6,7 @@ import { Schedule, ScheduleFormData } from "@/types/schedule";
 import ScheduleList from "./ScheduleList";
 import ScheduleForm from "./ScheduleForm";
 import { ApiScheduleRepository } from "../infrastructure/ApiScheduleRepository";
-import { Button } from "@/components/common/Button";
+import { Button } from "@/components/ui/Button";
 import {
   GetSchedulesUseCase,
   CreateScheduleUseCase,

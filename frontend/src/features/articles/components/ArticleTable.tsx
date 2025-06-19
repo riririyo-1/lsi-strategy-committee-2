@@ -11,6 +11,10 @@ interface ArticleTableProps {
   checkedArticles?: Set<string>;
   onCheckArticle?: (articleId: string) => void;
   onDelete?: (articleId: string) => void;
+  customActions?: (article: Article) => React.ReactNode;
+  showSelectButton?: boolean;
+  selectedArticles?: Article[];
+  onToggleSelect?: (article: Article) => void;
 }
 
 export default function ArticleTable({ 
@@ -18,11 +22,20 @@ export default function ArticleTable({
   showCheckbox = false,
   checkedArticles = new Set(),
   onCheckArticle,
-  onDelete
+  onDelete,
+  customActions,
+  showSelectButton = false,
+  selectedArticles = [],
+  onToggleSelect
 }: ArticleTableProps) {
   const { t } = useI18n();
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // 記事が選択済みかどうかを判定
+  const isArticleSelected = (articleId: string): boolean => {
+    return selectedArticles.some(article => article.id === articleId);
+  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -175,6 +188,11 @@ export default function ArticleTable({
             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase" style={{ width: '6%', minWidth: '60px' }}>
               リンク
             </th>
+            {showSelectButton && (
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase" style={{ width: '8%', minWidth: '80px' }}>
+                選択
+              </th>
+            )}
             {onDelete && (
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase">
                 <span className="sr-only">削除</span>
@@ -257,6 +275,34 @@ export default function ArticleTable({
                   </svg>
                 </a>
               </td>
+              {showSelectButton && onToggleSelect && (
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                  <button
+                    onClick={() => onToggleSelect(article)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 mx-auto ${
+                      isArticleSelected(article.id)
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    {isArticleSelected(article.id) ? (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {t("admin.topics.added")}
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        {t("admin.topics.addToList")}
+                      </>
+                    )}
+                  </button>
+                </td>
+              )}
               {onDelete && (
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
                   <button

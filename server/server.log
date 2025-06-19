@@ -1,0 +1,20 @@
+
+> lsi-strategy-committee-2@1.0.0 dev
+> ts-node src/app.ts
+
+[Swagger] API docs available at http://localhost:4100/api-docs
+🚀 Server running on http://localhost:4100
+📚 API Docs: http://localhost:4100/api-docs
+🏗️  Environment: development
+[Schedule Engine] Starting...
+[Schedule Engine] Loading 2 active schedules
+[Schedule Engine] Scheduled task for 41e500dc-3edb-44a9-b1b0-7c1f33773f30 with cron: 0 9 * * *
+[Schedule Engine] Scheduled task for 1c66c760-47ae-41ac-8315-4d3ad04d334b with cron: 53 0 * * *
+[Schedule Engine] Started successfully
+⏰ Schedule Engine started with 2 active tasks
+
+🛑 Received SIGTERM. Graceful shutdown...
+[Schedule Engine] Stopping...
+[Schedule Engine] Stopped task for schedule: 41e500dc-3edb-44a9-b1b0-7c1f33773f30
+[Schedule Engine] Stopped task for schedule: 1c66c760-47ae-41ac-8315-4d3ad04d334b
+[Schedule Engine] Stopped successfully

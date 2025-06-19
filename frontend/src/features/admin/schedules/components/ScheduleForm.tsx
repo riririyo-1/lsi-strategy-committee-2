@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { ScheduleFormData, ScheduleType, TaskType, TaskConfig } from "@/types/schedule";
+import { RSS_SOURCES, RSS_SOURCES_BY_CATEGORY, RECOMMENDED_SOURCE_IDS } from "@/constants/rssSources";
 
 interface ScheduleFormProps {
   initialData?: ScheduleFormData;
@@ -14,6 +15,10 @@ interface ScheduleFormProps {
 export default function ScheduleForm({ initialData, onSubmit, onCancel, isLoading }: ScheduleFormProps) {
   const { t } = useI18n();
   
+  // RSS Sourcesを定数から読み込み
+  const rssSources = RSS_SOURCES;
+  const sourcesByCategory = RSS_SOURCES_BY_CATEGORY;
+
   const [formData, setFormData] = useState<ScheduleFormData>({
     name: "",
     description: "",
@@ -21,7 +26,7 @@ export default function ScheduleForm({ initialData, onSubmit, onCancel, isLoadin
     time: "09:00",
     taskType: "rss_collection",
     taskConfig: {
-      sources: ["ITmedia", "NHK", "EE Times Japan", "マイナビ"],
+      sources: RECOMMENDED_SOURCE_IDS,
       daysToCollect: 1,
     },
     isActive: true,
@@ -275,28 +280,105 @@ export default function ScheduleForm({ initialData, onSubmit, onCancel, isLoadin
           {formData.taskType === "rss_collection" && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  収集ソース
-                </label>
-                <div className="space-y-2">
-                  {["ITmedia", "NHK", "EE Times Japan", "マイナビ"].map(source => (
-                    <label key={source} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.taskConfig.sources?.includes(source) || false}
-                        onChange={(e) => {
-                          const sources = formData.taskConfig.sources || [];
-                          if (e.target.checked) {
-                            updateTaskConfig({ sources: [...sources, source] });
-                          } else {
-                            updateTaskConfig({ sources: sources.filter(s => s !== source) });
-                          }
-                        }}
-                        className="mr-2 rounded"
-                      />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{source}</span>
-                    </label>
-                  ))}
+                <div className="flex justify-between items-center mb-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    収集ソース ({formData.taskConfig.sources?.length || 0} / {rssSources.length} 選択中)
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateTaskConfig({ sources: RECOMMENDED_SOURCE_IDS });
+                      }}
+                      className="px-2 py-1 text-xs border border-green-300 text-green-700 rounded-md hover:bg-green-50 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-900/30 transition-colors"
+                    >
+                      推奨選択
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSourceIds = rssSources.map(s => s.id);
+                        const currentSources = formData.taskConfig.sources || [];
+                        if (currentSources.length === allSourceIds.length) {
+                          updateTaskConfig({ sources: [] });
+                        } else {
+                          updateTaskConfig({ sources: allSourceIds });
+                        }
+                      }}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      {(formData.taskConfig.sources?.length || 0) === rssSources.length ? '全て解除' : '全て選択'}
+                    </button>
+                  </div>
+                </div>
+                
+                {/* カテゴリ別にソースを表示 */}
+                <div className="space-y-4 max-h-80 overflow-y-auto">
+                  {Object.entries(sourcesByCategory).map(([category, sources]) => {
+                    const categorySourceIds = sources.map(s => s.id);
+                    const selectedInCategory = categorySourceIds.filter(id => formData.taskConfig.sources?.includes(id)).length;
+                    
+                    return (
+                      <div key={category} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <h5 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {category} ({selectedInCategory}/{categorySourceIds.length})
+                          </h5>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentSources = formData.taskConfig.sources || [];
+                              const allSelected = categorySourceIds.every(id => currentSources.includes(id));
+                              
+                              if (allSelected) {
+                                updateTaskConfig({ sources: currentSources.filter(id => !categorySourceIds.includes(id)) });
+                              } else {
+                                updateTaskConfig({ sources: [...new Set([...currentSources, ...categorySourceIds])] });
+                              }
+                            }}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"
+                          >
+                            {categorySourceIds.every(id => formData.taskConfig.sources?.includes(id)) ? '全て解除' : '全て選択'}
+                          </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {sources.map((source) => (
+                            <button
+                              key={source.id}
+                              type="button"
+                              onClick={() => {
+                                const currentSources = formData.taskConfig.sources || [];
+                                if (currentSources.includes(source.id)) {
+                                  updateTaskConfig({ sources: currentSources.filter(s => s !== source.id) });
+                                } else {
+                                  updateTaskConfig({ sources: [...currentSources, source.id] });
+                                }
+                              }}
+                              className={`
+                                relative px-2 py-2 rounded-md border transition-all duration-200 
+                                text-xs font-medium min-h-[36px] flex items-center justify-center
+                                ${formData.taskConfig.sources?.includes(source.id)
+                                  ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-400 dark:bg-blue-900/30 dark:text-blue-300'
+                                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-gray-500 dark:hover:bg-gray-700'
+                                }
+                                ${source.recommended ? 'ring-1 ring-green-200 dark:ring-green-800' : ''}
+                                hover:shadow-sm active:scale-[0.98]
+                              `}
+                            >
+                              {formData.taskConfig.sources?.includes(source.id) && (
+                                <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-500 rounded-full dark:bg-blue-400"></div>
+                              )}
+                              {source.recommended && (
+                                <div className="absolute top-1 left-1 w-1.5 h-1.5 bg-green-500 rounded-full dark:bg-green-400"></div>
+                              )}
+                              <span className="text-center leading-tight">{source.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <div>

@@ -1,11 +1,7 @@
-import { Metadata } from "next";
 import ArticlesPageClient from "@/features/articles/components/ArticlesPageClient";
-import PageWithBackground from "@/components/common/PageWithBackground";
+import PageWithBackground from "@/components/layouts/PageWithBackground";
 
-export const metadata: Metadata = {
-  title: "記事一覧 - LSI戦略コミッティ",
-  description: "半導体業界の最新記事を掲載しています",
-};
+// 記事一覧
 
 export default function ArticlesPage() {
   return (

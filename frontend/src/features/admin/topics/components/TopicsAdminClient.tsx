@@ -1,29 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { TopicCard } from "./TopicCard";
-import { useTopics } from "../hooks/useTopics";
-import SearchBar from "@/components/common/SearchBar";
-import Pagination from "@/components/common/Pagination";
-import { PageLayout } from "@/components/common/PageLayout";
-import { Button } from "@/components/common/Button";
+import { TopicsServiceFactory } from "@/services/topics";
+import SearchBar from "@/components/ui/SearchBar";
+import Pagination from "@/components/ui/Pagination";
+import { PageLayout } from "@/components/layouts/PageLayout";
+import { Button } from "@/components/ui/Button";
 
 export const TopicsAdminClient: React.FC = () => {
   const { t } = useI18n();
-  const {
-    topics,
-    totalTopics,
-    currentPage,
-    pageSize,
-    isLoading,
-    error,
-    searchQuery,
-    setSearchQuery,
-    setCurrentPage,
-    deleteTopic,
-  } = useTopics();
+  const [topics, setTopics] = useState<any[]>([]);
+  const [totalTopics, setTotalTopics] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -40,10 +35,13 @@ export const TopicsAdminClient: React.FC = () => {
     if (topicToDelete) {
       setIsDeleting(true);
       try {
-        await deleteTopic(topicToDelete);
+        const domainServices = TopicsServiceFactory.createDomainServices();
+        await domainServices.updateTopicsUseCase.topicsRepository.delete(topicToDelete);
         setShowConfirmModal(false);
+        await fetchTopics(); // リストを再取得
       } catch (error) {
         console.error("削除エラー:", error);
+        setError(error instanceof Error ? error : new Error("削除に失敗しました"));
       } finally {
         setIsDeleting(false);
         setTopicToDelete(null);
@@ -57,10 +55,68 @@ export const TopicsAdminClient: React.FC = () => {
     setTopicToDelete(null);
   };
 
+  // TOPICSを取得する関数
+  const fetchTopics = async () => {
+    try {
+      setIsLoading(true);
+      const domainServices = TopicsServiceFactory.createDomainServices();
+      const topicsEntities = await domainServices.createTopicsUseCase.topicsRepository.findAll();
+      
+      // 検索フィルター
+      let filteredTopics = topicsEntities;
+      if (searchQuery) {
+        const lowerQuery = searchQuery.toLowerCase();
+        filteredTopics = topicsEntities.filter(
+          (topic) =>
+            topic.title.toLowerCase().includes(lowerQuery) ||
+            (topic.summary && topic.summary.toLowerCase().includes(lowerQuery))
+        );
+      }
+      
+      // ページネーション
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedTopics = filteredTopics.slice(startIndex, endIndex);
+      
+      // Topic型に変換
+      const convertedTopics = paginatedTopics.map((entity) => ({
+        id: entity.id,
+        title: entity.title,
+        publishDate: entity.publishDate.toISOString().split('T')[0],
+        summary: entity.summary || "",
+        articleCount: 0,
+        categories: [],
+        createdAt: entity.createdAt.toISOString(),
+        updatedAt: entity.updatedAt.toISOString(),
+      }));
+      
+      setTopics(convertedTopics);
+      setTotalTopics(filteredTopics.length);
+      setError(null);
+    } catch (err) {
+      console.error("Failed to fetch topics:", err);
+      setError(err instanceof Error ? err : new Error("TOPICSの取得に失敗しました"));
+      setTopics([]);
+      setTotalTopics(0);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 検索処理
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    setCurrentPage(1);
   };
+
+  // 初期化と状態変更時の処理
+  useEffect(() => {
+    fetchTopics();
+  }, []);
+
+  useEffect(() => {
+    fetchTopics();
+  }, [searchQuery, currentPage]);
 
   // ページネーション用の計算
   const totalPages = Math.ceil(totalTopics / pageSize);
@@ -147,6 +203,7 @@ export const TopicsAdminClient: React.FC = () => {
           />
         </>
       )}
+
       {/* 削除確認モーダル */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
@@ -178,6 +235,7 @@ export const TopicsAdminClient: React.FC = () => {
           </div>
         </div>
       )}
+
     </PageLayout>
   );
 };

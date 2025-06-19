@@ -33,6 +33,8 @@ async def crawl_articles(request: CrawlRequest):
     指定された期間のRSS記事を収集してデータベースに保存します。
     """
     try:
+        print(f"[DEBUG] Crawl request received: {request}")
+        
         # 期間の設定
         if request.start_date and request.end_date:
             start_date = request.start_date
@@ -42,8 +44,13 @@ async def crawl_articles(request: CrawlRequest):
             end_date = date.today()
             start_date = end_date - timedelta(days=days)
         
+        print(f"[DEBUG] Crawl period: {start_date} to {end_date}")
+        print(f"[DEBUG] Sources: {request.sources}")
+        
         # RSS記事を収集
         articles = crawl_service.fetch_articles_from_period(start_date, end_date, request.sources)
+        
+        print(f"[DEBUG] Articles found: {len(articles)}")
         
         if not articles:
             return CrawlResponse(
@@ -57,6 +64,8 @@ async def crawl_articles(request: CrawlRequest):
         
         # データベースに保存
         save_result = db_adapter.save_articles(articles)
+        
+        print(f"[DEBUG] Save result: {save_result}")
         
         return CrawlResponse(
             message="Crawl completed successfully",

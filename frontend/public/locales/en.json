@@ -213,29 +213,21 @@
       "error": "An error occurred",
       "publishDate": "Publish Date: {date}",
       "articleCount": "Articles: {count}",
+      "category": "Category",
+      "selectCategory": "Select Category",
       "confirmDelete": "Delete this TOPIC?",
-      "confirmDeleteMessage": "This action cannot be undone. Are you sure you want to delete?"
+      "confirmDeleteMessage": "This action cannot be undone. Are you sure you want to delete?",
+      "allArticles": "All",
+      "selectedArticlesCount": "Selected Articles: {count}",
+      "addToList": "Add to List",
+      "added": "Added"
     }
   },
   "categories": {
-    "main": {
-      "political": "Political",
-      "economical": "Economical",
-      "social": "Social",
-      "technological": "Technological"
-    },
-    "sub": {
-      "government_initiatives": "Government Initiatives",
-      "ma": "M&A",
-      "production_tech": "Production Technology",
-      "advanced_tech": "Advanced Technology",
-      "social_trends": "Social Trends",
-      "market_trends": "Market Trends",
-      "research_development": "R&D",
-      "supply_chain": "Supply Chain",
-      "environmental": "Environmental",
-      "others": "Others"
-    },
+    "political": "Political",
+    "economical": "Economical",
+    "social": "Social",
+    "technological": "Technological",
     "uncategorized": "Uncategorized"
   }
 }

@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { Article } from "@/types/article";
-import { ViewToggle } from "@/components/common";
+import { ViewToggle } from "@/components/ui";
 import ArticleTable from "@/features/articles/components/ArticleTable";
 import ArticleCardGrid from "@/features/articles/components/ArticleCardGrid";
-import Pagination from "@/components/common/Pagination";
-import { Button } from "@/components/common/Button";
+import Pagination from "@/components/ui/Pagination";
+import { Button } from "@/components/ui/Button";
 import ArticleSearchFilters from "@/components/common/ArticleSearchFilters";
 import type { ArticleSearchFilters as ArticleSearchFiltersType } from "@/components/common/ArticleSearchFilters";
 import { GetArticlesWithPaginationUseCase } from "@/features/articles/use-cases/GetArticlesWithPaginationUseCase";

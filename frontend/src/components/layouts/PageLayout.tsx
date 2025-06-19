@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import PageWithBackground from "./PageWithBackground";
 
 interface PageLayoutProps {
   title: string;
@@ -19,7 +18,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   showActionBar = false
 }) => {
   return (
-    <PageWithBackground>
+    <div className="w-full max-w-7xl mx-auto px-5">
       <div className="text-center mb-12">
         <h1 className="text-4xl md:text-5xl font-bold mb-10 text-white text-shadow">
           {title}
@@ -38,6 +37,6 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
       )}
       
       {children}
-    </PageWithBackground>
+    </div>
   );
 };

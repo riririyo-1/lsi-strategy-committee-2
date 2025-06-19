@@ -4,8 +4,8 @@ import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { useState, useEffect } from "react";
 import { Topic } from "@/types/topic.d";
 import { TopicCard } from "./TopicCard";
-import { topicsApi } from "@/lib/apiClient";
-import { PageLayout } from "@/components/common/PageLayout";
+import { TopicsServiceFactory } from "@/services/topics";
+import { PageLayout } from "@/components/layouts/PageLayout";
 
 const TopicsPageClient = () => {
   const { t } = useI18n();
@@ -17,19 +17,19 @@ const TopicsPageClient = () => {
     const fetchTopics = async () => {
       try {
         setLoading(true);
-        const response = await topicsApi.getAll();
-        const apiTopics = response.data;
+        const domainServices = TopicsServiceFactory.createDomainServices();
+        const topicsEntities = await domainServices.createTopicsUseCase.topicsRepository.findAll();
         
-        // APIレスポンスをTopic型に変換
-        const convertedTopics: Topic[] = apiTopics.map((apiTopic: any) => ({
-          id: apiTopic.id,
-          title: apiTopic.title,
-          publishDate: apiTopic.publishDate ? new Date(apiTopic.publishDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          summary: apiTopic.summary || "",
-          articleCount: apiTopic.articles ? apiTopic.articles.length : 0,
+        // TopicsEntityからTopic型に変換
+        const convertedTopics: Topic[] = topicsEntities.map((entity) => ({
+          id: entity.id,
+          title: entity.title,
+          publishDate: entity.publishDate.toISOString().split('T')[0],
+          summary: entity.summary || "",
+          articleCount: 0, // 記事数は別途取得が必要
           categories: [], // 現在はサポートしていない
-          createdAt: apiTopic.createdAt,
-          updatedAt: apiTopic.updatedAt,
+          createdAt: entity.createdAt.toISOString(),
+          updatedAt: entity.updatedAt.toISOString(),
         }));
         
         setTopics(convertedTopics);

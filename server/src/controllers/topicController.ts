@@ -106,7 +106,7 @@ export class TopicController {
       const result = await topicService.updateArticleCategory(
         id, 
         article_id, 
-        { main, sub }
+        { main }
       );
 
       res.json(result);

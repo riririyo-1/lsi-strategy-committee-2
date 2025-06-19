@@ -2,7 +2,7 @@
 
 import { TrendReport } from "@/types/trendReport";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
-import { Card, CardMetadata, CardAction } from "@/components/common/Card";
+import { Card, CardMetadata, CardAction } from "@/components/ui/Card";
 
 interface ReportCardProps {
   report: TrendReport;
@@ -14,7 +14,9 @@ const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
   const metadata: CardMetadata[] = [
     {
       label: "",
-      value: t("research.publishDate", { date: report.publishDate })
+      value: t("research.publishDate", { 
+        date: report.publishDate?.substring(0, 10) || t("common.notSet", "未設定")
+      })
     }
   ];
 

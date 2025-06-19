@@ -36,6 +36,8 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY prisma/ ./prisma/
+# Copy source files for Swagger documentation
+COPY src/ ./src/
 
 # Expose ports
 EXPOSE 4000 5555

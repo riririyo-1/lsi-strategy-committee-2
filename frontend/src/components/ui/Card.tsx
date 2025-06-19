@@ -25,7 +25,7 @@ interface CardProps {
   className?: string;
   children?: React.ReactNode;
   variant?: "default" | "report" | "admin" | "article";
-  colorTheme?: "default" | "research" | "article" | "topics" | "analysis";
+  colorTheme?: "default" | "research" | "article" | "topics" | "analysis" | "selected";
   imageUrl?: string;
   imageAlt?: string;
   showCheckbox?: boolean;
@@ -44,7 +44,8 @@ const getVariantClasses = (variant: CardProps["variant"], colorTheme: CardProps[
     research: "hover:shadow-emerald-400/50 hover:border-emerald-300 dark:hover:border-emerald-600",
     article: "hover:shadow-blue-400/50 hover:border-blue-300 dark:hover:border-blue-600", 
     topics: "hover:shadow-yellow-400/50 hover:border-yellow-300 dark:hover:border-yellow-600",
-    analysis: "hover:shadow-purple-400/50 hover:border-purple-300 dark:hover:border-purple-600"
+    analysis: "hover:shadow-purple-400/50 hover:border-purple-300 dark:hover:border-purple-600",
+    selected: "shadow-blue-500/50 border-blue-400 dark:border-blue-500"
   };
 
   const variants = {

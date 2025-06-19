@@ -22,40 +22,62 @@ class CrawlService:
     def _load_rss_feeds(self) -> dict:
         """RSS feeds設定をロード"""
         try:
-            with open("rss_feeds.yaml", "r", encoding="utf-8") as f:
-                return yaml.safe_load(f)
+            # 複数の可能な場所を試す
+            possible_paths = [
+                "rss_feeds.yaml",
+                "src/rss_feeds.yaml",
+                os.path.join(os.path.dirname(__file__), "..", "rss_feeds.yaml"),
+                "/app/src/rss_feeds.yaml"  # Docker環境用
+            ]
+            
+            for path in possible_paths:
+                if os.path.exists(path):
+                    with open(path, "r", encoding="utf-8") as f:
+                        print(f"[INFO] Loaded RSS feeds from: {path}")
+                        return yaml.safe_load(f)
+            
+            print(f"[ERROR] rss_feeds.yaml not found in any of: {possible_paths}")
+            return {}
         except Exception as e:
             print(f"[ERROR] Failed to load rss_feeds.yaml: {e}")
-            return {"feeds": []}
+            return {}
     
     def fetch_articles_from_period(self, start_date: date, end_date: date, sources: Optional[List[str]] = None) -> List[Article]:
         """指定期間のRSS記事を収集"""
         all_articles = []
         
+        print(f"[INFO] Fetching RSS articles from {start_date} to {end_date}")
+        if sources:
+            print(f"[INFO] Requested sources: {sources}")
+        
         # サービス名をキーとしたYAML構造に対応
-        for service_name, feeds in self.rss_feeds_config.items():
+        for service_id, feeds in self.rss_feeds_config.items():
             if not isinstance(feeds, list):
                 continue
                 
             for feed_config in feeds:
                 feed_url = feed_config.get("url")
-                source_name = feed_config.get("name", service_name)
+                source_name = feed_config.get("name", service_id)
                 
                 if not feed_url:
                     continue
                 
-                # ソースフィルタリング
-                if sources and source_name not in sources:
-                    print(f"[INFO] Skipping {source_name} (not in requested sources: {sources})")
-                    continue
+                # ソースフィルタリング（IDまたは名前で一致）
+                if sources:
+                    # service_id（例: "itmedia"）またはsource_name（例: "ITmedia"）で比較
+                    if service_id not in sources and source_name not in sources:
+                        print(f"[INFO] Skipping {source_name} (service_id: {service_id}) - not in requested sources")
+                        continue
                 
                 try:
+                    print(f"[INFO] Fetching from {source_name} ({feed_url})")
                     articles = self._fetch_articles_from_feed(feed_url, source_name, start_date, end_date)
                     all_articles.extend(articles)
                     print(f"[INFO] Fetched {len(articles)} articles from {source_name}")
                 except Exception as e:
                     print(f"[ERROR] Failed to fetch from {source_name}: {e}")
         
+        print(f"[INFO] Total articles fetched: {len(all_articles)}")
         return all_articles
     
     def _fetch_articles_from_feed(self, feed_url: str, source_name: str, start_date: date, end_date: date) -> List[Article]:

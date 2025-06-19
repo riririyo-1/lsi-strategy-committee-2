@@ -88,6 +88,8 @@ export const topicsApi = {
     apiClient.post(`/api/topics/${id}/generate-summary`, data),
   updateArticleCategory: (id: string, articleId: string, data: any) =>
     apiClient.patch(`/api/topics/${id}/article/${articleId}/category`, data),
+  updateArticles: (id: string, data: { articles: string[] }) =>
+    apiClient.patch(`/api/topics/${id}/articles`, data),
 };
 
 // Categories API
@@ -230,4 +232,5 @@ export const pipelineTopicsApi = {
   }) => pipelineClient.post("/api/topics/categorize", data),
 };
 
+export { pipelineClient };
 export default apiClient;

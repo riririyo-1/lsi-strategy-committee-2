@@ -20,9 +20,25 @@ export class ArticleController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
       
+      // フィルターパラメータを取得
+      const filters = {
+        startDate: req.query.startDate as string,
+        endDate: req.query.endDate as string,
+        labelTags: req.query.labelTags ? (req.query.labelTags as string).split(',') : undefined,
+        searchQuery: req.query.searchQuery as string,
+        sourceFilter: req.query.sourceFilter as string,
+      };
+      
+      // 空の値を除去
+      Object.keys(filters).forEach(key => {
+        if (!filters[key as keyof typeof filters]) {
+          delete filters[key as keyof typeof filters];
+        }
+      });
+      
       // ページネーション対応
-      if (req.query.page || req.query.limit) {
-        const result = await articleService.findWithPagination(page, limit);
+      if (req.query.page || req.query.limit || Object.keys(filters).length > 0) {
+        const result = await articleService.findWithPagination(page, limit, filters);
         res.json(result);
       } else {
         // 従来の全件取得（後方互換性）
@@ -161,6 +177,44 @@ export class ArticleController {
       res.json(labels);
     } catch (error) {
       console.error("Error fetching labels:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  // デバッグ用：記事のデータ構造確認
+  async getDebugInfo(req: Request, res: Response): Promise<void> {
+    try {
+      const articles = await articleService.findAll();
+      const sampleArticles = articles.slice(0, 5); // 最初の5件のみ
+      
+      const debugInfo = {
+        totalCount: articles.length,
+        sampleArticles: sampleArticles.map(article => ({
+          id: article.id,
+          title: article.title?.substring(0, 50) + "...",
+          source: article.source,
+          publishedAt: article.publishedAt,
+          labels: article.labels,
+          labelsType: typeof article.labels,
+          labelsLength: Array.isArray(article.labels) ? article.labels.length : 'not array',
+          summary: article.summary ? article.summary.substring(0, 100) + "..." : null,
+          summaryLength: article.summary?.length || 0
+        })),
+        distinctSources: [...new Set(articles.map(a => a.source))],
+        distinctLabels: [...new Set(articles.flatMap(a => Array.isArray(a.labels) ? a.labels : []))],
+        dateRange: {
+          earliest: articles.reduce((min, article) => 
+            new Date(article.publishedAt) < new Date(min.publishedAt) ? article : min
+          ).publishedAt,
+          latest: articles.reduce((max, article) => 
+            new Date(article.publishedAt) > new Date(max.publishedAt) ? article : max
+          ).publishedAt
+        }
+      };
+      
+      res.json(debugInfo);
+    } catch (error) {
+      console.error("Error fetching debug info:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }

@@ -22,6 +22,13 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ─── Swagger Setup ───────────────────────────
+// Swagger JSON endpoint
+app.get("/api-docs-json", (_req: Request, res: Response) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
+
+// Swagger UI
 app.use(
   "/api-docs",
   ...(process.env.NODE_ENV !== "production"

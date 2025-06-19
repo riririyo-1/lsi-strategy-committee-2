@@ -21,10 +21,17 @@ export class RSSCollectService {
 
       const result = response.data;
       console.log(
-        `Pipeline収集完了: 結果受信 - inserted=${result.insertedCount}, skipped=${result.skippedCount}`
+        `Pipeline収集完了: inserted=${result.insertedCount}, skipped=${result.skippedCount}, invalid=${result.invalidCount}`
       );
 
-      return result;
+      // レスポンス形式を統一
+      return {
+        success: true,
+        insertedCount: result.insertedCount || 0,
+        skippedCount: result.skippedCount || 0,
+        invalidCount: result.invalidCount || 0,
+        invalidItems: result.invalidItems || [],
+      };
     } catch (error: any) {
       console.error("RSS収集エラー:", error);
 

@@ -11,45 +11,67 @@ import {
 import axios from "axios";
 
 export class TopicService {
+  // カテゴリ階層マッピング（小カテゴリ → 大カテゴリ）
+  private readonly CATEGORY_HIERARCHY: { [key: string]: string | null } = {
+    government_initiatives: "political",    // 国の取り組み → 政治
+    ma: "economical",                      // M&A → 経済
+    market_trends: "economical",           // 市場動向 → 経済
+    production_tech: "technological",      // 生産技術 → 技術
+    advanced_tech: "technological",        // 先端技術 → 技術
+    research_development: "technological", // 研究開発 → 技術
+    supply_chain: "technological",         // サプライチェーン → 技術
+    environmental: "technological",        // 環境・サステナビリティ → 技術
+    social_trends: "social",              // 世の中の動き → 社会
+    others: null,                         // その他 → 未分類
+  };
+
   // カテゴリ名からIDへのマッピング
   private readonly CATEGORY_NAME_TO_ID_MAP = {
-    // 日本語名からIDへのマッピング
+    // 基本4カテゴリ（日本語）
     政治: "political",
-    経済: "economical",
+    経済: "economical", 
     社会: "social",
     技術: "technological",
+    
+    // 基本4カテゴリ（英語）
+    Political: "political",
+    Economical: "economical",
+    Social: "social",
+    Technological: "technological",
+    political: "political",
+    economical: "economical",
+    social: "social",
+    technological: "technological",
+    
+    // その他の分類を4カテゴリに集約
     技術動向: "technological",
     市場動向: "economical",
     企業動向: "economical",
     "政策・規制": "political",
     "投資・M&A": "economical",
     "人材・組織": "social",
-    その他: "others",
-
-    // 英語名からIDへのマッピング
-    Political: "political",
-    Economical: "economical",
-    Social: "social",
-    Technological: "technological",
-    "Government Initiatives": "government_initiatives",
-    "M&A": "ma",
-    "Production Technology": "production_tech",
-    "Advanced Technology": "advanced_tech",
-    "Social Trends": "social_trends",
-    "Market Trends": "market_trends",
-    "R&D": "research_development",
-    "Supply Chain": "supply_chain",
-    Environmental: "environmental",
-    Others: "others",
-
-    // サブカテゴリの日本語名
-    国の取り組み: "government_initiatives",
-    生産技術: "production_tech",
-    先端技術: "advanced_tech",
-    世の中の動き: "social_trends",
-    研究開発: "research_development",
-    サプライチェーン: "supply_chain",
-    "環境・サステナビリティ": "environmental",
+    "Government Initiatives": "political",
+    "M&A": "economical",
+    "Production Technology": "technological",
+    "Advanced Technology": "technological",
+    "Social Trends": "social",
+    "Market Trends": "economical",
+    "R&D": "technological",
+    "Supply Chain": "technological",
+    Environmental: "technological",
+    国の取り組み: "political",
+    生産技術: "technological",
+    先端技術: "technological",
+    世の中の動き: "social",
+    研究開発: "technological",
+    サプライチェーン: "technological",
+    "環境・サステナビリティ": "technological",
+    
+    // その他は除外（null = 無視）
+    その他: null,
+    Others: null,
+    others: null,
+    other: null,
   };
 
   // カテゴリ名をIDに変換
@@ -132,10 +154,35 @@ export class TopicService {
         typeof articleId === "string" ? articleId : String(articleId)
       );
 
-      const topicsArticleData = articleIds.map((articleId) => ({
-        topicId: topic.id,
-        articleId: articleId,
-      }));
+      // カテゴリ情報を含めて関連付けを作成
+      const topicsArticleData = await Promise.all(
+        articleIds.map(async (articleId) => {
+          let categoryId = null;
+
+          // カテゴリ情報がある場合は処理
+          if (dto.categories && dto.categories[articleId]) {
+            const categoryName = dto.categories[articleId].main;
+            if (categoryName) {
+              // カテゴリ名をIDに変換
+              const mainCategoryId = this.mapCategoryNameToId(categoryName);
+              if (mainCategoryId) {
+                const category = await prisma.category.upsert({
+                  where: { name: mainCategoryId },
+                  update: {},
+                  create: { name: mainCategoryId },
+                });
+                categoryId = category.id;
+              }
+            }
+          }
+
+          return {
+            topicId: topic.id,
+            articleId: articleId,
+            categoryId: categoryId,
+          };
+        })
+      );
 
       await prisma.topicsArticle.createMany({
         data: topicsArticleData,
@@ -206,10 +253,35 @@ export class TopicService {
           typeof articleId === "string" ? articleId : String(articleId)
         );
 
-        const topicsArticleData = articleIds.map((articleId) => ({
-          topicId: id,
-          articleId: articleId,
-        }));
+        // カテゴリ情報を含めて関連付けを作成
+        const topicsArticleData = await Promise.all(
+          articleIds.map(async (articleId) => {
+            let categoryId = null;
+
+            // カテゴリ情報がある場合は処理
+            if (dto.categories && dto.categories[articleId]) {
+              const categoryName = dto.categories[articleId].main;
+              if (categoryName) {
+                // カテゴリ名をIDに変換
+                const mainCategoryId = this.mapCategoryNameToId(categoryName);
+                if (mainCategoryId) {
+                  const category = await prisma.category.upsert({
+                    where: { name: mainCategoryId },
+                    update: {},
+                    create: { name: mainCategoryId },
+                  });
+                  categoryId = category.id;
+                }
+              }
+            }
+
+            return {
+              topicId: id,
+              articleId: articleId,
+              categoryId: categoryId,
+            };
+          })
+        );
 
         await prisma.topicsArticle.createMany({
           data: topicsArticleData,
@@ -263,9 +335,8 @@ export class TopicService {
       throw new Error("Topic not found");
     }
 
-    // メインカテゴリとサブカテゴリのIDを取得
+    // メインカテゴリのIDを取得（単一カテゴリのみ）
     let categoryId = null;
-    let subCategoryId = null;
 
     if (dto.main) {
       // カテゴリ名をIDに変換
@@ -280,20 +351,6 @@ export class TopicService {
       }
     }
 
-    if (dto.sub && Array.isArray(dto.sub) && dto.sub.length > 0) {
-      // サブカテゴリの最初の要素を使用
-      const subCategoryName = dto.sub[0];
-      const subCatId = this.mapCategoryNameToId(subCategoryName);
-      if (subCatId) {
-        const subCategory = await prisma.category.upsert({
-          where: { name: subCatId },
-          update: {},
-          create: { name: subCatId },
-        });
-        subCategoryId = subCategory.id;
-      }
-    }
-
     await prisma.topicsArticle.updateMany({
       where: {
         topicId: topicId,
@@ -301,13 +358,12 @@ export class TopicService {
       },
       data: {
         categoryId: categoryId,
-        subCategoryId: subCategoryId,
       },
     });
 
     return {
       success: true,
-      categories: { main: dto.main, sub: dto.sub || [] },
+      categories: { main: dto.main },
     };
   }
 
@@ -431,7 +487,7 @@ export class TopicService {
         pipelineUrl,
         {
           article_ids: dto.article_ids,
-          categorization_type: "hierarchical",
+          categorization_type: "single",
         },
         {
           headers: {
@@ -447,7 +503,7 @@ export class TopicService {
       const categorizedResults = [];
       const categoryBreakdown = response.data.category_breakdown || {};
 
-      // 各カテゴリセクションから記事を処理
+      // 各カテゴリセクションから記事を処理（単一カテゴリのみ）
       for (const [categoryName, articles] of Object.entries(
         categoryBreakdown
       )) {
@@ -456,17 +512,15 @@ export class TopicService {
             categorizedResults.push({
               article_id: article.id,
               main: categoryName,
-              sub: article.subcategories || [],
               confidence: 0.95, // Pipeline APIから信頼度が返される場合はそれを使用
             });
           }
         }
       }
 
-      // 結果をDBに保存
+      // 結果をDBに保存（単一カテゴリのみ）
       for (const result of categorizedResults) {
         let categoryId = null;
-        let subCategoryId = null;
 
         // メインカテゴリをDBに保存
         if (result.main) {
@@ -481,21 +535,7 @@ export class TopicService {
           }
         }
 
-        // サブカテゴリをDBに保存
-        if (result.sub && Array.isArray(result.sub) && result.sub.length > 0) {
-          const subCategoryName = result.sub[0];
-          const subCatId = this.mapCategoryNameToId(subCategoryName);
-          if (subCatId) {
-            const subCategory = await prisma.category.upsert({
-              where: { name: subCatId },
-              update: {},
-              create: { name: subCatId },
-            });
-            subCategoryId = subCategory.id;
-          }
-        }
-
-        // TopicsArticleテーブルのカテゴリを更新
+        // TopicsArticleテーブルのカテゴリを更新（単一カテゴリのみ）
         await prisma.topicsArticle.updateMany({
           where: {
             topicId: topicId,
@@ -503,12 +543,11 @@ export class TopicService {
           },
           data: {
             categoryId: categoryId,
-            subCategoryId: subCategoryId,
           },
         });
 
         console.log(
-          `Updated categories for article ${result.article_id}: main=${result.main}, sub=${result.sub}`
+          `Updated categories for article ${result.article_id}: main=${result.main}`
         );
       }
 
@@ -570,8 +609,24 @@ export class TopicService {
     return { html, success: true };
   }
 
-  // レスポンス形式に変換
-  private toResponseFormat(prismaTopic: any): any {
+  // レスポンス形式に変換（アロー関数でthisコンテキストを保持）
+  private toResponseFormat = (prismaTopic: any): any => {
+    const articles = prismaTopic.topicsArticles?.map((ta: any) => ({
+      id: ta.article.id,
+      title: ta.article.title,
+      source: ta.article.source,
+      publishedAt: ta.article.publishedAt,
+      summary: ta.article.summary,
+      labels: ta.article.labels,
+      thumbnailUrl: ta.article.thumbnailUrl,
+      articleUrl: ta.article.articleUrl,
+      category: ta.category?.name || null,
+      subCategory: ta.subCategory?.name || null,
+    })) || [];
+
+    // 記事を階層構造でグループ化
+    const categories = this.groupArticlesByHierarchy(articles);
+
     return {
       id: prismaTopic.id,
       title: prismaTopic.title,
@@ -581,20 +636,68 @@ export class TopicService {
       viewCount: prismaTopic.viewCount,
       createdAt: prismaTopic.createdAt,
       updatedAt: prismaTopic.updatedAt,
-      articles:
-        prismaTopic.topicsArticles?.map((ta: any) => ({
-          id: ta.article.id,
-          title: ta.article.title,
-          source: ta.article.source,
-          publishedAt: ta.article.publishedAt,
-          summary: ta.article.summary,
-          labels: ta.article.labels,
-          thumbnailUrl: ta.article.thumbnailUrl,
-          articleUrl: ta.article.articleUrl,
-          category: ta.category?.name || null,
-          subCategory: ta.subCategory?.name || null,
-        })) || [],
+      articles,
+      categories,
     };
+  };
+
+  // 記事を階層構造でグループ化するメソッド（大カテゴリのみ）
+  private groupArticlesByHierarchy(articles: any[]): any[] {
+    const categoryGroups: { [mainCategory: string]: any[] } = {};
+
+    // 記事を大カテゴリで分類
+    articles.forEach((article) => {
+      let mainCategory = article.category;
+
+      // 小カテゴリから大カテゴリを推定
+      if (article.subCategory && this.CATEGORY_HIERARCHY[article.subCategory]) {
+        mainCategory = this.CATEGORY_HIERARCHY[article.subCategory];
+      }
+
+      // 大カテゴリがない場合はスキップ
+      if (!mainCategory) {
+        return;
+      }
+
+      // カテゴリグループに追加
+      if (!categoryGroups[mainCategory]) {
+        categoryGroups[mainCategory] = [];
+      }
+      categoryGroups[mainCategory].push(article);
+    });
+
+    // 配列形式に変換してソート
+    const result: any[] = [];
+    const mainCategoryOrder = ["political", "economical", "social", "technological"];
+
+    mainCategoryOrder.forEach((mainCat) => {
+      if (categoryGroups[mainCat] && categoryGroups[mainCat].length > 0) {
+        // 記事を日付順にソート（新しい順）
+        const sortedArticles = categoryGroups[mainCat].sort((a, b) => {
+          return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+        });
+
+        result.push({
+          name: this.getCategoryDisplayName(mainCat),
+          mainCategory: mainCat,
+          articles: sortedArticles,
+        });
+      }
+    });
+
+    return result;
+  }
+
+  // カテゴリ表示名を取得
+  private getCategoryDisplayName(mainCategory: string): string {
+    const mainNames: { [key: string]: string } = {
+      political: "政治",
+      economical: "経済", 
+      social: "社会",
+      technological: "技術",
+    };
+
+    return mainNames[mainCategory] || mainCategory;
   }
 }
 

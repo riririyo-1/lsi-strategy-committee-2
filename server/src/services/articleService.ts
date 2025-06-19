@@ -15,8 +15,18 @@ export class ArticleService {
     return articles.map(this.toDomainEntity);
   }
 
-  // ページネーション付き記事取得
-  async findWithPagination(page: number = 1, limit: number = 50): Promise<{
+  // ページネーション付き記事取得（フィルター対応）
+  async findWithPagination(
+    page: number = 1, 
+    limit: number = 50,
+    filters: {
+      startDate?: string;
+      endDate?: string;
+      labelTags?: string[];
+      searchQuery?: string;
+      sourceFilter?: string;
+    } = {}
+  ): Promise<{
     articles: Article[];
     totalCount: number;
     totalPages: number;
@@ -26,16 +36,70 @@ export class ArticleService {
   }> {
     const skip = (page - 1) * limit;
     
+    // フィルター条件を構築
+    const where: Prisma.ArticleWhereInput = {};
+    
+    // 日付フィルター
+    if (filters.startDate || filters.endDate) {
+      where.publishedAt = {};
+      if (filters.startDate) {
+        where.publishedAt.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        // 終了日の23:59:59まで含める
+        const endDate = new Date(filters.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        where.publishedAt.lte = endDate;
+      }
+    }
+    
+    // ラベルフィルター（配列の要素すべてを含む）
+    if (filters.labelTags && filters.labelTags.length > 0) {
+      where.AND = filters.labelTags.map(tag => ({
+        labels: {
+          has: tag // PostgreSQLの配列操作
+        }
+      }));
+    }
+    
+    // キーワード検索（タイトルまたは要約）
+    if (filters.searchQuery) {
+      const searchTerm = filters.searchQuery.toLowerCase();
+      where.OR = [
+        {
+          title: {
+            contains: searchTerm,
+            mode: 'insensitive'
+          }
+        },
+        {
+          summary: {
+            contains: searchTerm,
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
+    
+    // ソースフィルター
+    if (filters.sourceFilter) {
+      where.source = {
+        contains: filters.sourceFilter,
+        mode: 'insensitive'
+      };
+    }
+    
     // 並列で記事取得と総数取得
     const [articles, totalCount] = await Promise.all([
       prisma.article.findMany({
+        where,
         orderBy: {
           publishedAt: "desc",
         },
         skip,
         take: limit,
       }),
-      prisma.article.count(),
+      prisma.article.count({ where }),
     ]);
     
     const totalPages = Math.ceil(totalCount / limit);

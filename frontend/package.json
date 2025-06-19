@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@react-three/drei": "^10.0.8",
     "@react-three/fiber": "^9.1.2",
     "@types/swagger-ui-react": "^5.18.0",

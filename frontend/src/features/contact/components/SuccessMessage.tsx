@@ -2,7 +2,7 @@
 
 import { ContactSubmitResponse } from "@/types/contact";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
-import { Alert } from "@/components/common/Alert";
+import { Alert } from "@/components/ui/Alert";
 
 interface SuccessMessageProps {
   result: ContactSubmitResponse;

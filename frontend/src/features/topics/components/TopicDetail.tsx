@@ -11,7 +11,7 @@ interface TopicDetailProps {
 export const TopicDetail: React.FC<TopicDetailProps> = ({ topic }) => {
   const { t } = useI18n();
   return (
-    <div className="max-w-4xl mx-auto bg-white/80 dark:bg-gray-900/90 rounded-xl p-8 mt-24 shadow-lg text-gray-900 dark:text-gray-100">
+    <div className="max-w-4xl mx-auto bg-white/80 dark:bg-gray-900/90 rounded-xl p-8 shadow-lg text-gray-900 dark:text-gray-100">
       <div className="mb-6 flex justify-end">
         <a
           href="/topics"
@@ -22,12 +22,11 @@ export const TopicDetail: React.FC<TopicDetailProps> = ({ topic }) => {
       </div>
       <h1 className="text-4xl font-bold text-yellow-300 mb-2">{topic.title}</h1>
       <p className="text-gray-500 dark:text-gray-400 mb-2">
-        {t("topics.publishDate", { date: topic.publishDate })}
+        {t("topics.publishDate", { 
+          date: topic.publishDate?.substring(0, 10) || t("common.notSet", "未設定")
+        })}
       </p>
       <p className="mb-6 text-gray-700 dark:text-gray-200">{topic.summary}</p>
-      <h2 className="text-2xl font-semibold text-blue-200 mb-4">
-        {t("topics.thisMonthArticles")}
-      </h2>
       <div>
         {topic.categories.map((cat: TopicCategory) => (
           <CategorySection key={cat.id} category={cat} />

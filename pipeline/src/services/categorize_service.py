@@ -13,15 +13,12 @@ class CategorizeService:
         self.db = db_adapter
         self.llm = llm_adapter
         
-        # 事前定義されたカテゴリ
+        # 事前定義されたカテゴリ（新4カテゴリシステム）
         self.predefined_categories = [
-            "技術動向",
-            "市場動向", 
-            "企業動向",
-            "政策・規制",
-            "投資・M&A",
-            "人材・組織",
-            "その他"
+            "政治",
+            "経済",
+            "社会",
+            "技術"
         ]
     
     def categorize_articles(self, article_ids: Optional[List[str]] = None, limit: int = 50) -> Dict[str, Any]:
@@ -93,24 +90,20 @@ class CategorizeService:
                 mapped.append(pred_cat)
                 continue
             
-            # 部分一致でマッピング
-            if any(keyword in pred_cat_lower for keyword in ["技術", "テクノロジー", "イノベーション"]):
-                mapped.append("技術動向")
-            elif any(keyword in pred_cat_lower for keyword in ["市場", "マーケット", "需要", "価格"]):
-                mapped.append("市場動向")
-            elif any(keyword in pred_cat_lower for keyword in ["企業", "会社", "業績", "決算"]):
-                mapped.append("企業動向")
-            elif any(keyword in pred_cat_lower for keyword in ["政策", "規制", "法律", "政府"]):
-                mapped.append("政策・規制")
-            elif any(keyword in pred_cat_lower for keyword in ["投資", "買収", "m&a", "資金調達"]):
-                mapped.append("投資・M&A")
-            elif any(keyword in pred_cat_lower for keyword in ["人材", "採用", "組織", "人事"]):
-                mapped.append("人材・組織")
+            # 部分一致でマッピング（新4カテゴリシステム）
+            if any(keyword in pred_cat_lower for keyword in ["技術", "テクノロジー", "イノベーション", "技術動向", "先端技術", "生産技術", "研究開発", "サプライチェーン", "環境"]):
+                mapped.append("技術")
+            elif any(keyword in pred_cat_lower for keyword in ["市場", "マーケット", "需要", "価格", "企業", "会社", "業績", "決算", "市場動向", "企業動向", "投資", "買収", "m&a", "資金調達"]):
+                mapped.append("経済")
+            elif any(keyword in pred_cat_lower for keyword in ["政策", "規制", "法律", "政府", "政治", "国の取り組み"]):
+                mapped.append("政治")
+            elif any(keyword in pred_cat_lower for keyword in ["人材", "採用", "組織", "人事", "社会", "世の中の動き", "人材・組織"]):
+                mapped.append("社会")
             else:
-                mapped.append("その他")
+                mapped.append("技術")  # デフォルトは技術カテゴリ
         
-        # 重複除去
-        return list(set(mapped)) if mapped else ["その他"]
+        # 重複除去（1つのカテゴリのみ選択）
+        return [mapped[0]] if mapped else ["技術"]
     
     def get_category_statistics(self) -> Dict[str, Any]:
         """カテゴリ別統計情報を取得"""
