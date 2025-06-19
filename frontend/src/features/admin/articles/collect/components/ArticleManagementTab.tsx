@@ -1,42 +1,40 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
-import { Article } from "@/types/article";
 import { ViewToggle } from "@/components/ui";
 import ArticleTable from "@/features/articles/components/ArticleTable";
 import ArticleCardGrid from "@/features/articles/components/ArticleCardGrid";
 import Pagination from "@/components/ui/Pagination";
 import { Button } from "@/components/ui/Button";
 import ArticleSearchFilters from "@/components/common/ArticleSearchFilters";
-import type { ArticleSearchFilters as ArticleSearchFiltersType } from "@/components/common/ArticleSearchFilters";
-import { GetArticlesWithPaginationUseCase } from "@/features/articles/use-cases/GetArticlesWithPaginationUseCase";
+import type { ArticleSearchFiltersType } from "@/components/common";
+import { useArticleFiltering } from "@/hooks/useArticleFiltering";
 import { articlesApi, summarizeApi } from "@/lib/apiClient";
-
-const articlesUseCase = new GetArticlesWithPaginationUseCase();
 
 export default function ArticleManagementTab() {
   const { t } = useI18n();
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "card">("card");
   
-  // フィルター状態
-  const [appliedFilters, setAppliedFilters] = useState<ArticleSearchFiltersType>({
-    startDate: "",
-    endDate: "",
-    labelTags: [],
-    searchQuery: "",
-    sourceFilter: ""
+  // 共通フックを使用してフィルタリング機能を実装
+  const {
+    articles,
+    loading,
+    error,
+    totalCount,
+    currentPage,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+    appliedFilters,
+    fetchArticles,
+    handleFiltersSearch,
+    handleFiltersClear,
+    handlePageChange,
+  } = useArticleFiltering({
+    articlesPerPage: 50,
+    onError: (error) => console.error("記事取得エラー:", error),
   });
-
-  // ページネーション状態
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
   // 選択機能
   const [selectedArticles, setSelectedArticles] = useState<Set<string>>(
@@ -51,108 +49,16 @@ export default function ArticleManagementTab() {
 
   const ARTICLES_PER_PAGE = 50;
 
-  // 記事取得関数
-  const fetchArticles = useCallback(async (page: number = 1) => {
-    try {
-      setLoading(true);
-
-      const result = await articlesUseCase.execute({
-        page,
-        limit: ARTICLES_PER_PAGE,
-      });
-
-      // 日付フォーマットの正規化
-      const formattedArticles = result.articles.map((article: any) => ({
-        ...article,
-        publishedAt: article.publishedAt || article.createdAt,
-        labels: article.labels || [],
-        summary: article.summary || "",
-        thumbnailUrl: article.thumbnailUrl || null,
-      }));
-
-      setArticles(formattedArticles);
-      setTotalCount(result.totalCount);
-      setTotalPages(result.totalPages);
-      setCurrentPage(result.currentPage);
-      setHasNextPage(result.hasNextPage);
-      setHasPreviousPage(result.hasPreviousPage);
-      setError(null);
-
-      // 選択状態をリセット
-      setSelectedArticles(new Set());
-      setIsAllSelected(false);
-    } catch (err) {
-      console.error("Failed to fetch articles:", err);
-      setError("記事の読み込みに失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // 初回読み込み
+  // 初回読み込み（fetchArticlesの依存関係を削除して無限ループを防止）
   useEffect(() => {
     fetchArticles(1);
-  }, [fetchArticles]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 検索とフィルタリング
-  const filteredArticles = articles.filter((article) => {
-    // 日付フィルター
-    const articleDate = new Date(article.publishedAt);
-    const matchesDateRange =
-      (!appliedFilters.startDate || articleDate >= new Date(appliedFilters.startDate)) &&
-      (!appliedFilters.endDate || articleDate <= new Date(appliedFilters.endDate + "T23:59:59"));
-
-    // ラベルフィルター（複数ラベルのAND検索）
-    const matchesLabels = appliedFilters.labelTags.length === 0 || 
-      appliedFilters.labelTags.every(tag =>
-        article.labels?.some(label => 
-          label.toLowerCase().includes(tag.toLowerCase())
-        )
-      );
-
-    // キーワード検索
-    const matchesSearch =
-      !appliedFilters.searchQuery ||
-      article.title.toLowerCase().includes(appliedFilters.searchQuery.toLowerCase()) ||
-      article.summary.toLowerCase().includes(appliedFilters.searchQuery.toLowerCase());
-
-    // ソースフィルター
-    const matchesSource = !appliedFilters.sourceFilter ||
-      article.source.toLowerCase().includes(appliedFilters.sourceFilter.toLowerCase());
-
-    return matchesDateRange && matchesLabels && matchesSearch && matchesSource;
-  });
-
-
-  // 新しい検索フィルターハンドラ
-  const handleFiltersSearch = (filters: ArticleSearchFiltersType) => {
-    setAppliedFilters(filters);
-    if (currentPage !== 1) {
-      fetchArticles(1);
-    }
-  };
-
-  // フィルタークリアハンドラ
-  const handleFiltersClear = () => {
-    setAppliedFilters({
-      startDate: "",
-      endDate: "",
-      labelTags: [],
-      searchQuery: "",
-      sourceFilter: ""
-    });
-    if (currentPage !== 1) {
-      fetchArticles(1);
-    }
-  };
-
-  // ページ変更ハンドラ
-  const handlePageChange = (page: number) => {
-    if (page !== currentPage && page >= 1 && page <= totalPages) {
-      fetchArticles(page);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+  // ページ変更や記事取得時に選択状態をリセット
+  useEffect(() => {
+    setSelectedArticles(new Set());
+    setIsAllSelected(false);
+  }, [articles]);
 
   // 表示モード切替ハンドラ
   const handleViewModeChange = (mode: "table" | "card") => {
@@ -174,7 +80,7 @@ export default function ArticleManagementTab() {
       newSelected.add(articleId);
     }
     setSelectedArticles(newSelected);
-    setIsAllSelected(newSelected.size === filteredArticles.length);
+    setIsAllSelected(newSelected.size === articles.length);
   };
 
   // 全選択ハンドラ
@@ -183,7 +89,7 @@ export default function ArticleManagementTab() {
       setSelectedArticles(new Set());
       setIsAllSelected(false);
     } else {
-      const allIds = new Set(filteredArticles.map((article) => article.id));
+      const allIds = new Set(articles.map((article) => article.id));
       setSelectedArticles(allIds);
       setIsAllSelected(true);
     }
@@ -223,7 +129,7 @@ export default function ArticleManagementTab() {
     if (selectedArticles.size === 0) return;
 
     // ラベルがない記事のみをフィルタリング
-    const articlesToProcess = filteredArticles.filter(
+    const articlesToProcess = articles.filter(
       (article) =>
         selectedArticles.has(article.id) &&
         (!article.labels || article.labels.length === 0)
@@ -283,7 +189,7 @@ export default function ArticleManagementTab() {
     if (selectedArticles.size === 0) return;
 
     // 要約がない記事のみをフィルタリング
-    const articlesToProcess = filteredArticles.filter(
+    const articlesToProcess = articles.filter(
       (article) =>
         selectedArticles.has(article.id) &&
         (!article.summary || article.summary.trim() === "")
@@ -405,7 +311,7 @@ export default function ArticleManagementTab() {
         </p>
         {(appliedFilters.startDate || appliedFilters.endDate || appliedFilters.labelTags.length > 0 || appliedFilters.searchQuery || appliedFilters.sourceFilter) && (
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            フィルター結果: {filteredArticles.length} 件
+            フィルター適用中
           </p>
         )}
       </div>
@@ -445,7 +351,7 @@ export default function ArticleManagementTab() {
           <div className="bg-red-500/10 dark:bg-red-500/20 border border-red-500 text-red-800 dark:text-white px-4 py-3 rounded">
             {error}
           </div>
-        ) : filteredArticles.length === 0 ? (
+        ) : articles.length === 0 ? (
           <div className="text-center py-20 text-gray-500 dark:text-gray-400">
             記事が見つかりません
           </div>
@@ -453,14 +359,14 @@ export default function ArticleManagementTab() {
           <>
             {viewMode === "table" ? (
               <ArticleTable
-                articles={filteredArticles}
+                articles={articles}
                 showCheckbox={true}
                 checkedArticles={selectedArticles}
                 onCheckArticle={handleSelectArticle}
               />
             ) : (
               <ArticleCardGrid
-                articles={filteredArticles}
+                articles={articles}
                 showCheckboxes={true}
                 selectedArticles={selectedArticles}
                 onSelectArticle={handleSelectArticle}

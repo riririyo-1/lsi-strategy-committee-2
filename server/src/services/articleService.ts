@@ -57,7 +57,7 @@ export class ArticleService {
     if (filters.labelTags && filters.labelTags.length > 0) {
       where.AND = filters.labelTags.map(tag => ({
         labels: {
-          has: tag // PostgreSQLの配列操作
+          hasSome: [tag] // PostgreSQLの配列操作（部分一致）
         }
       }));
     }

@@ -47,6 +47,194 @@ body {
   }
 }
 
+/* View Transitions API スタイル */
+@supports (view-transition-name: none) {
+  /* 記事タイトルのトランジション */
+  [style*="view-transition-name"] {
+    contain: paint;
+  }
+
+  /* ビューモード切り替えのトランジション */
+  .view-transition-container {
+    view-transition-name: article-view-container;
+  }
+
+  /* カードビューとテーブルビューのトランジション */
+  ::view-transition-old(article-view-container) {
+    animation: fade-out 0.3s ease-out;
+  }
+
+  ::view-transition-new(article-view-container) {
+    animation: fade-in 0.3s ease-in;
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* メインコンテンツのトランジション - ページ全体 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.5s;
+  animation-timing-function: ease-in-out;
+}
+
+/* デフォルトのフェードイン・アウト */
+::view-transition-old(root) {
+  animation-name: slide-out-to-left;
+}
+
+::view-transition-new(root) {
+  animation-name: slide-in-from-right;
+}
+
+/* カード固有のトランジション */
+.topic-card {
+  view-transition-name: topic-card;
+}
+
+.topic-detail-page {
+  view-transition-name: topic-detail;
+}
+
+/* カードのトランジション */
+::view-transition-old(topic-card) {
+  animation-name: scale-out;
+  animation-duration: 0.3s;
+  animation-timing-function: ease-in;
+}
+
+::view-transition-new(topic-detail) {
+  animation-name: scale-in;
+  animation-duration: 0.4s;
+  animation-timing-function: ease-out;
+  animation-delay: 0.1s;
+}
+
+/* トランジション用のキーフレーム */
+@keyframes slide-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-out-to-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+}
+
+@keyframes scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* ビュー切替用のクラス */
+.view-transition-container {
+  view-transition-name: article-view;
+}
+
+/* ビュー切替のトランジション */
+::view-transition-old(article-view),
+::view-transition-new(article-view) {
+  animation-duration: 0.3s;
+  animation-timing-function: ease-in-out;
+}
+
+::view-transition-old(article-view) {
+  animation-name: fade-out-quick;
+}
+
+::view-transition-new(article-view) {
+  animation-name: fade-in-quick;
+}
+
+@keyframes fade-in-quick {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-out-quick {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
 /* content-overlayのスタイル */
 @layer components {
   .content-overlay {

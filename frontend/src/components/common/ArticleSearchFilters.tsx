@@ -65,19 +65,22 @@ export default function ArticleSearchFilters({
   };
 
   const handleQuickFilterChange = (filterId: string) => {
-    setQuickFilter(filterId);
+    // 現在選択中のフィルターをもう一度クリックした場合は「すべて」に戻す
+    const newFilterId = quickFilter === filterId ? "all" : filterId;
+    setQuickFilter(newFilterId);
+    
     // クイックフィルターが変更されたら即座に検索
     const filterLabels =
-      filterId === "all"
+      newFilterId === "all"
         ? []
-        : [QUICK_FILTERS.find((f) => f.id === filterId)?.label || ""];
+        : [QUICK_FILTERS.find((f) => f.id === newFilterId)?.label || ""];
     onSearch({
       startDate,
       endDate,
       labelTags: filterLabels,
       searchQuery,
       sourceFilter,
-      quickFilter: filterId,
+      quickFilter: newFilterId,
     });
   };
 

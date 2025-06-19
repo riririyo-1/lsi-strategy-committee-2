@@ -5,6 +5,13 @@ import { Article } from "@/types/article";
 export interface ArticlePaginationParams {
   page: number;
   limit: number;
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+    labelTags?: string[];
+    searchQuery?: string;
+    sourceFilter?: string;
+  };
 }
 
 export type PaginatedArticlesResponse = PaginatedResponse<Article> & {
@@ -17,6 +24,25 @@ export class GetArticlesWithPaginationUseCase {
       page: params.page.toString(),
       limit: params.limit.toString(),
     });
+
+    // フィルターパラメータを追加
+    if (params.filters) {
+      if (params.filters.startDate) {
+        searchParams.append('startDate', params.filters.startDate);
+      }
+      if (params.filters.endDate) {
+        searchParams.append('endDate', params.filters.endDate);
+      }
+      if (params.filters.labelTags && params.filters.labelTags.length > 0) {
+        searchParams.append('labelTags', params.filters.labelTags.join(','));
+      }
+      if (params.filters.searchQuery) {
+        searchParams.append('searchQuery', params.filters.searchQuery);
+      }
+      if (params.filters.sourceFilter) {
+        searchParams.append('sourceFilter', params.filters.sourceFilter);
+      }
+    }
 
     const response = await fetch(`/api/articles?${searchParams}`);
     

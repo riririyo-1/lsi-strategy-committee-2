@@ -3,6 +3,7 @@
 import type { Topic, TopicCategory } from "@/types/topic.d";
 import { useI18n } from "@/features/i18n/hooks/useI18n";
 import { Card, CardMetadata, CardAction } from "@/components/ui/Card";
+import { useViewTransition } from "@/hooks/useViewTransition";
 
 interface TopicCardProps {
   topic: Topic;
@@ -18,6 +19,7 @@ export function TopicCard({
   className 
 }: TopicCardProps) {
   const { t } = useI18n();
+  const { navigate } = useViewTransition();
   
   const categorySummary = topic.categories
     ? topic.categories
@@ -46,6 +48,26 @@ export function TopicCard({
     }
   ];
 
+  // View Transitionを使用した詳細ページへの遷移
+  const handleViewDetails = async () => {
+    console.log(`[TopicCard] Detail button clicked for topic: ${topic.id}`);
+    try {
+      await navigate(`/topics/${topic.id}`, {
+        onBeforeTransition: () => {
+          console.log(`[TopicCard] Before transition to topic ${topic.id}`);
+        },
+        onAfterTransition: () => {
+          console.log(`[TopicCard] After transition to topic ${topic.id}`);
+        },
+        onError: (error) => {
+          console.error("[TopicCard] View transition failed:", error);
+        }
+      });
+    } catch (error) {
+      console.error("[TopicCard] Navigation failed:", error);
+    }
+  };
+
   const actions: CardAction[] = variant === "admin" 
     ? [
         {
@@ -62,7 +84,7 @@ export function TopicCard({
     : [
         {
           label: t("common.details"),
-          href: `/topics/${topic.id}`,
+          onClick: handleViewDetails,
           variant: "primary"
         }
       ];
@@ -75,7 +97,7 @@ export function TopicCard({
       actions={actions}
       variant={variant}
       colorTheme="topics"
-      className={className}
+      className={`topic-card ${className}`}
     />
   );
 }
